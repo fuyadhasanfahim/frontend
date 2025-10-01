@@ -24,6 +24,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { SignUpFormValues, signupSchema } from '@/validators/auth.schema';
 import { Check, X } from 'lucide-react';
 import Link from 'next/link';
+import { useSignupMutation } from '@/redux/features/auth/authApi';
+import { toast } from 'sonner';
+import { IconEye, IconEyeOff, IconLoader2 } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
 
 export default function SignUpForm() {
     const [password, setPassword] = useState('');
@@ -39,11 +43,34 @@ export default function SignUpForm() {
         },
     });
 
-    const onSubmit = (values: SignUpFormValues) => {
-        console.log('✅ Submitted values:', values);
+    const [signup, { isLoading }] = useSignupMutation();
+    const isDisabled = isLoading || form.formState.isSubmitting;
+
+    const router = useRouter();
+
+    const onSubmit = async (values: SignUpFormValues) => {
+        try {
+            const resPromise = signup(values).unwrap();
+
+            await toast.promise(resPromise, {
+                loading: 'Creating your account...',
+                success: (data) => {
+                    router.push('/sign-in');
+                    return data?.message ?? '🎉 Account created successfully!';
+                },
+                error: (err) => {
+                    return (
+                        err?.data?.message ??
+                        '⚠️ Something went wrong while creating your account.'
+                    );
+                },
+            });
+        } catch (err) {
+            console.error(err);
+            toast.error('Unexpected error. Please try again later.');
+        }
     };
 
-    // password rules
     const rules = [
         {
             label: 'At least 6 characters',
@@ -160,60 +187,109 @@ export default function SignUpForm() {
                             <FormField
                                 control={form.control}
                                 name="password"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Password</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="password"
-                                                placeholder="••••••••"
-                                                {...field}
-                                                onChange={(e) => {
-                                                    field.onChange(e);
-                                                    setPassword(e.target.value);
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
+                                render={({ field }) => {
+                                    const [showPassword, setShowPassword] =
+                                        useState(false);
 
-                                        {/* Checklist only if user typed something */}
-                                        {password && (
-                                            <div className="mt-2 space-y-1 text-sm">
-                                                {rules.map((rule, idx) => {
-                                                    const passed =
-                                                        rule.test(password);
-                                                    return (
-                                                        <div
-                                                            key={idx}
-                                                            className={`flex items-center gap-2 ${
-                                                                passed
-                                                                    ? 'text-green-600'
-                                                                    : 'text-gray-500'
-                                                            }`}
-                                                        >
-                                                            {passed ? (
-                                                                <Check
-                                                                    size={16}
-                                                                />
-                                                            ) : (
-                                                                <X size={16} />
-                                                            )}
-                                                            <span>
-                                                                {rule.label}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
+                                    return (
+                                        <FormItem>
+                                            <FormLabel>Password</FormLabel>
+                                            <div className="relative">
+                                                <FormControl>
+                                                    <Input
+                                                        type={
+                                                            showPassword
+                                                                ? 'text'
+                                                                : 'password'
+                                                        }
+                                                        placeholder="••••••••"
+                                                        {...field}
+                                                        onChange={(e) => {
+                                                            field.onChange(e);
+                                                            setPassword(
+                                                                e.target.value
+                                                            );
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                {/* Toggle button */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setShowPassword(
+                                                            (prev) => !prev
+                                                        )
+                                                    }
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                                >
+                                                    {showPassword ? (
+                                                        <IconEyeOff
+                                                            stroke={2}
+                                                            size={18}
+                                                        />
+                                                    ) : (
+                                                        <IconEye
+                                                            stroke={2}
+                                                            size={18}
+                                                        />
+                                                    )}
+                                                </button>
                                             </div>
-                                        )}
-                                    </FormItem>
-                                )}
+                                            <FormMessage />
+
+                                            {/* Checklist only if user typed something */}
+                                            {password && (
+                                                <div className="mt-2 space-y-1 text-sm">
+                                                    {rules.map((rule, idx) => {
+                                                        const passed =
+                                                            rule.test(password);
+                                                        return (
+                                                            <div
+                                                                key={idx}
+                                                                className={`flex items-center gap-2 ${
+                                                                    passed
+                                                                        ? 'text-green-600'
+                                                                        : 'text-gray-500'
+                                                                }`}
+                                                            >
+                                                                {passed ? (
+                                                                    <Check
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                    />
+                                                                ) : (
+                                                                    <X
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                    />
+                                                                )}
+                                                                <span>
+                                                                    {rule.label}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </FormItem>
+                                    );
+                                }}
                             />
                         </CardContent>
 
                         <CardFooter className="flex flex-col gap-3">
-                            <Button type="submit" className="w-full">
-                                Sign Up
+                            <Button
+                                type="submit"
+                                className="w-full"
+                                disabled={isDisabled}
+                            >
+                                {isDisabled ? (
+                                    <IconLoader2 stroke={2} />
+                                ) : (
+                                    'Sign Up'
+                                )}
                             </Button>
                             <p className="text-sm text-center text-gray-600">
                                 Already have an account?{' '}

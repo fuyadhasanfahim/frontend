@@ -34,4 +34,10 @@ export const signupSchema = z.object({
         }),
 });
 
+export const signinSchema = z.object({
+    email: z.email({ message: 'Please enter a valid email address.' }).trim(),
+    password: z.string().nonempty('Please enter your password.'),
+});
+
 export type SignUpFormValues = z.infer<typeof signupSchema>;
+export type SignInFormValues = z.infer<typeof signinSchema>;
