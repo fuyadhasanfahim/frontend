@@ -51,7 +51,7 @@ export default function SignInForm() {
             await toast.promise(resPromise, {
                 loading: 'Signing you in...',
                 success: (data) => {
-                    // router.push('/dashboard');
+                    router.push('/dashboard');
                     return data?.message ?? '✅ Welcome back!';
                 },
                 error: (err) =>
