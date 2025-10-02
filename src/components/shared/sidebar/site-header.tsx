@@ -1,3 +1,5 @@
+'use client';
+
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { NavUser } from './nav-user';
 import { BellIcon, Check, CheckCheck, DotIcon, SearchIcon } from 'lucide-react';
@@ -11,13 +13,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { usePathname } from 'next/navigation';
 
 export function SiteHeader() {
-    const user = {
-        name: 'shadcn',
-        email: 'm@example.com',
-        avatar: '/avatars/shadcn.jpg',
-    };
+    const pathname = usePathname();
+
+    const data = [
+        {
+            location: '/dashboard',
+            title: 'Dashboard',
+        },
+        {
+            location: '/leads',
+            title: 'Leads',
+        },
+    ];
 
     return (
         <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -28,7 +38,12 @@ export function SiteHeader() {
                         orientation="vertical"
                         className="mx-2 data-[orientation=vertical]:h-4"
                     />
-                    <h1 className="text-base font-medium">Documents</h1>
+                    <h1 className="text-base font-medium">
+                        {
+                            data.find((d) => pathname.startsWith(d.location))
+                                ?.title
+                        }
+                    </h1>
                 </div>
 
                 <div className="items-end">
@@ -99,7 +114,7 @@ export function SiteHeader() {
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <NavUser user={user} />
+                        <NavUser />
                     </div>
                 </div>
             </div>

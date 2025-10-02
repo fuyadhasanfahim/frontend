@@ -1,30 +1,25 @@
 import { apiSlice } from '@/redux/api/apiSlice';
 
+type ImportResponse = {
+    success: boolean;
+    message: string;
+    uploadId: string;
+    inserted: number;
+    duplicates: number;
+    errors: number;
+    total: number;
+};
+
 export const leadApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
-        importLeads: builder.mutation<
-            {
-                success: boolean;
-                inserted: number;
-                skipped?: number;
-                errors?: number;
-            }, // Response type
-            FormData // Request type
-        >({
+        importLeads: builder.mutation<ImportResponse, FormData>({
             query: (formData) => ({
-                url: '/leads/import',
+                url: '/leads/import-leads',
                 method: 'POST',
                 body: formData,
-            }),
-        }),
-
-        getLeads: builder.query<any[], void>({
-            query: () => ({
-                url: '/leads/get-leads',
-                method: 'GET',
             }),
         }),
     }),
 });
 
-export const { useImportLeadsMutation, useGetLeadsQuery } = leadApi;
+export const { useImportLeadsMutation } = leadApi;

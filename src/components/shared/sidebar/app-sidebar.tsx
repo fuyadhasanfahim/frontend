@@ -9,6 +9,7 @@ import {
 import { NavMain } from './nav-main';
 import Link from 'next/link';
 import { IconFileTypeXls, IconLayoutDashboard } from '@tabler/icons-react';
+import Image from 'next/image';
 
 const data = {
     user: {
@@ -37,11 +38,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {...props}
             className="sticky top-0 backdrop-blur-sm z-50"
         >
-            <SidebarHeader className="mb-6">
-                <Link href="/dashboard" className="text-center">
-                    <span className="text-2xl font-semibold font-bespoke-sans">
-                        Coconut Pesticides
-                    </span>
+            <SidebarHeader>
+                <Link href="/dashboard" className="mx-auto">
+                    <Image
+                        src="https://res.cloudinary.com/dny7zfbg9/image/upload/v1759400371/shmce8gonodjco6oq74k.png"
+                        alt="logo"
+                        width={140}
+                        height={40}
+                        className="w-auto h-auto"
+                        priority
+                    />
                 </Link>
             </SidebarHeader>
             <SidebarContent>
