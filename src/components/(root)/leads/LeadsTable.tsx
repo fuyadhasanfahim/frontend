@@ -1,461 +1,622 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
-import type { LeadStatus } from '@/types/lead';
-import { LEAD_STATUSES } from '@/types/lead';
-import { useDebounce } from '@/hooks/useDebounce';
-
+import React, { useState } from 'react';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectTrigger,
+    SelectValue,
     SelectContent,
     SelectItem,
-    SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
-    Table,
-    TableHeader,
-    TableHead,
-    TableRow,
-    TableBody,
-    TableCell,
-} from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
 import { Skeleton } from '@/components/ui/skeleton';
 
-import {
-    IconSearch,
-    IconChevronLeft,
-    IconChevronRight,
-    IconChevronsLeft,
-    IconChevronsRight,
-    IconArrowsSort,
-    IconChecks,
-    IconX,
-    IconWorld,
-    IconBriefcase,
-    IconUser,
-    IconMail,
-    IconPhone,
-} from '@tabler/icons-react';
-import LeadStatusBadge from './LeadStatusBadge';
+type LeadStatus =
+    | 'new'
+    | 'contacted'
+    | 'responded'
+    | 'qualified'
+    | 'meeting_scheduled'
+    | 'proposal'
+    | 'won'
+    | 'lost'
+    | 'on_hold';
 
-type PageSize = 25 | 50 | 100 | 'all';
+const STATUSES: LeadStatus[] = [
+    'new',
+    'contacted',
+    'responded',
+    'qualified',
+    'meeting_scheduled',
+    'proposal',
+    'won',
+    'lost',
+    'on_hold',
+];
+
+const statusColors: Record<LeadStatus, string> = {
+    new: 'bg-blue-50 text-blue-700 border-blue-200',
+    contacted: 'bg-purple-50 text-purple-700 border-purple-200',
+    responded: 'bg-teal-50 text-teal-700 border-teal-200',
+    qualified: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    meeting_scheduled: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    proposal: 'bg-orange-50 text-orange-700 border-orange-200',
+    won: 'bg-green-50 text-green-700 border-green-200',
+    lost: 'bg-red-50 text-red-700 border-red-200',
+    on_hold: 'bg-gray-50 text-gray-700 border-gray-200',
+};
+
+type SortOption =
+    | 'companyAsc'
+    | 'companyDesc'
+    | 'countryAsc'
+    | 'countryDesc'
+    | 'statusAsc'
+    | 'statusDesc'
+    | 'dateAsc'
+    | 'dateDesc';
 
 export default function LeadsTable() {
-    // controls
-    const [status, setStatus] = useState<LeadStatus | 'all'>('all');
     const [search, setSearch] = useState('');
-    const debouncedSearch = useDebounce(search, 400);
+    const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
+    const [sort, setSort] = useState<SortOption>('dateDesc');
+    const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(20);
 
-    const [page, setPage] = useState(1); // 1-based
-    const [pageSize, setPageSize] = useState<PageSize>(25);
-
-    const [sortBy, setSortBy] = useState<
-        'companyName' | 'country' | 'status' | 'createdAt'
-    >('companyName');
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-
-    const queryArgs = useMemo(
-        () => ({
-            page,
-            limit: pageSize,
-            status,
-            search: debouncedSearch || undefined,
-            sortBy,
-            sortDir,
-        }),
-        [page, pageSize, status, debouncedSearch, sortBy, sortDir]
-    );
-
-    const { data, isFetching, isLoading, isError } =
-        useGetLeadsQuery(queryArgs);
-    const rows = data?.data ?? [];
-    const total = data?.total ?? 0;
-
-    const totalPages = useMemo(() => {
-        if (pageSize === 'all') return 1;
-        return Math.max(1, Math.ceil(total / (pageSize || 1)));
-    }, [total, pageSize]);
-
-    const canPrev = page > 1;
-    const canNext = page < totalPages;
-
-    function toggleSort(field: typeof sortBy) {
-        if (sortBy === field) {
-            setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-        } else {
-            setSortBy(field);
-            setSortDir('asc');
+    const getSortParams = () => {
+        switch (sort) {
+            case 'companyAsc':
+                return { sortBy: 'companyName', sortOrder: 'asc' };
+            case 'companyDesc':
+                return { sortBy: 'companyName', sortOrder: 'desc' };
+            case 'countryAsc':
+                return { sortBy: 'country', sortOrder: 'asc' };
+            case 'countryDesc':
+                return { sortBy: 'country', sortOrder: 'desc' };
+            case 'statusAsc':
+                return { sortBy: 'status', sortOrder: 'asc' };
+            case 'statusDesc':
+                return { sortBy: 'status', sortOrder: 'desc' };
+            case 'dateAsc':
+                return { sortBy: 'createdAt', sortOrder: 'asc' };
+            case 'dateDesc':
+                return { sortBy: 'createdAt', sortOrder: 'desc' };
+            default:
+                return { sortBy: 'createdAt', sortOrder: 'desc' };
         }
-    }
+    };
 
-    function resetFilters() {
-        setStatus('all');
-        setSearch('');
-        setPage(1);
-        setPageSize(25);
-        setSortBy('companyName');
-        setSortDir('asc');
-    }
+    const { sortBy, sortOrder } = getSortParams();
+
+    const { data, isLoading, isError } = useGetLeadsQuery({
+        page,
+        limit: perPage,
+        search,
+        status: statusFilter,
+        sortBy,
+        sortOrder,
+    });
+
+    const leads = data?.data ?? [];
+    const pagination = data?.pagination ?? { total: 0, totalPages: 1 };
+
+    const getInitials = (firstName: string, lastName: string) => {
+        return `${firstName?.charAt(0) || ''}${
+            lastName?.charAt(0) || ''
+        }`.toUpperCase();
+    };
 
     return (
-        <div className="space-y-4">
-            {/* Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <IconSearch
-                            size={16}
-                            className="absolute left-2 top-2.5 text-muted-foreground"
-                        />
+        <TooltipProvider>
+            <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-6">
+                {/* Tabs */}
+                <Tabs
+                    value={statusFilter}
+                    onValueChange={(val) => {
+                        setPage(1);
+                        setStatusFilter(val as LeadStatus | 'all');
+                    }}
+                >
+                    <TabsList className="bg-gray-100 p-1">
+                        <TabsTrigger
+                            value="all"
+                            className="data-[state=active]:bg-white"
+                        >
+                            All
+                        </TabsTrigger>
+                        {STATUSES.map((s) => (
+                            <TabsTrigger
+                                key={s}
+                                value={s}
+                                className="capitalize data-[state=active]:bg-white"
+                            >
+                                {s.replace('_', ' ')}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
+
+                {/* Search + Sort + Per Page */}
+                <div className="flex flex-wrap justify-between items-center gap-3">
+                    <div className="relative w-full sm:w-80">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                         <Input
+                            placeholder="Search by company, email, or country..."
                             value={search}
                             onChange={(e) => {
                                 setPage(1);
                                 setSearch(e.target.value);
                             }}
-                            placeholder="Search company, email, phone, country..."
-                            className="pl-8 w-[260px]"
+                            className="pl-10 border-gray-300"
                         />
                     </div>
 
-                    <Select
-                        value={String(pageSize)}
-                        onValueChange={(v) => {
-                            const next = (
-                                v === 'all' ? 'all' : Number(v)
-                            ) as PageSize;
-                            setPageSize(next);
-                            setPage(1);
-                        }}
-                    >
-                        <SelectTrigger className="w-[120px]">
-                            <SelectValue placeholder="Rows" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="flex gap-3">
+                        <Select
+                            value={sort}
+                            onValueChange={(val) => setSort(val as SortOption)}
+                        >
+                            <SelectTrigger className="w-[170px] border-gray-300">
+                                <SelectValue placeholder="Sort by" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="companyAsc">
+                                    Company A-Z
+                                </SelectItem>
+                                <SelectItem value="companyDesc">
+                                    Company Z-A
+                                </SelectItem>
+                                <SelectItem value="countryAsc">
+                                    Country A-Z
+                                </SelectItem>
+                                <SelectItem value="countryDesc">
+                                    Country Z-A
+                                </SelectItem>
+                                <SelectItem value="statusAsc">
+                                    Status A-Z
+                                </SelectItem>
+                                <SelectItem value="statusDesc">
+                                    Status Z-A
+                                </SelectItem>
+                                <SelectItem value="dateAsc">
+                                    Oldest first
+                                </SelectItem>
+                                <SelectItem value="dateDesc">
+                                    Newest first
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
 
-                    <Button
-                        variant="outline"
-                        onClick={resetFilters}
-                        className="gap-1"
-                    >
-                        <IconX size={16} /> Reset
-                    </Button>
+                        <Select
+                            value={String(perPage)}
+                            onValueChange={(val) => {
+                                setPage(1);
+                                setPerPage(Number(val));
+                            }}
+                        >
+                            <SelectTrigger className="w-[120px] border-gray-300">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[20, 50, 100].map((n) => (
+                                    <SelectItem key={n} value={String(n)}>
+                                        {n} / page
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
-                <div className="text-sm text-muted-foreground">
-                    {isFetching
-                        ? 'Refreshing…'
-                        : total
-                        ? `${total} results`
-                        : 'No results'}
-                </div>
-            </div>
-
-            {/* Status Tabs */}
-            <Tabs
-                value={status}
-                onValueChange={(v) => {
-                    setStatus(v as any);
-                    setPage(1);
-                }}
-                className="w-full"
-            >
-                <TabsList className="flex flex-wrap">
-                    <TabsTrigger value="all" className="capitalize">
-                        All
-                    </TabsTrigger>
-                    {LEAD_STATUSES.map((s) => (
-                        <TabsTrigger key={s} value={s} className="capitalize">
-                            {s.replace('_', ' ')}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-            </Tabs>
-
-            <Separator />
-
-            {/* Table */}
-            <div className="rounded-lg border bg-white overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Table */}
+                <div className="overflow-x-auto rounded-lg border border-gray-200">
                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead
-                                    className="whitespace-nowrap min-w-[220px] cursor-pointer"
-                                    onClick={() => toggleSort('companyName')}
-                                >
-                                    <div className="flex items-center gap-1">
-                                        Company <IconArrowsSort size={16} />
-                                    </div>
+                        <TableHeader className="bg-gray-50">
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead className="font-semibold text-gray-700">
+                                    Company
                                 </TableHead>
-                                <TableHead className="min-w-[200px]">
+                                <TableHead className="font-semibold text-gray-700">
                                     Contact
                                 </TableHead>
-                                <TableHead className="min-w-[220px]">
-                                    Emails
+                                <TableHead className="font-semibold text-gray-700">
+                                    Contact Info
                                 </TableHead>
-                                <TableHead className="min-w-[180px]">
-                                    Phones
+                                <TableHead className="font-semibold text-gray-700">
+                                    Location
                                 </TableHead>
-                                <TableHead
-                                    className="min-w-[140px] cursor-pointer"
-                                    onClick={() => toggleSort('country')}
-                                >
-                                    <div className="flex items-center gap-1">
-                                        Country <IconArrowsSort size={16} />
-                                    </div>
+                                <TableHead className="font-semibold text-gray-700">
+                                    Status
                                 </TableHead>
-                                <TableHead
-                                    className="min-w-[160px] cursor-pointer"
-                                    onClick={() => toggleSort('status')}
-                                >
-                                    <div className="flex items-center gap-1">
-                                        Status <IconArrowsSort size={16} />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="min-w-[120px] text-right">
-                                    Actions
+                                <TableHead className="font-semibold text-gray-700">
+                                    Team
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
-
                         <TableBody>
                             {isLoading ? (
-                                [...Array(6)].map((_, i) => (
+                                Array.from({ length: perPage }).map((_, i) => (
                                     <TableRow key={i}>
-                                        {[...Array(7)].map((__, j) => (
-                                            <TableCell key={j}>
-                                                <Skeleton className="h-5 w-full" />
-                                            </TableCell>
-                                        ))}
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-32" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-24" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-40" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-20" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-6 w-20" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-8 w-24" />
+                                        </TableCell>
                                     </TableRow>
                                 ))
-                            ) : rows.length === 0 ? (
+                            ) : isError ? (
                                 <TableRow>
-                                    <TableCell colSpan={7}>
-                                        <div className="h-36 flex items-center justify-center text-muted-foreground">
-                                            No leads found.
+                                    <TableCell
+                                        colSpan={6}
+                                        className="text-center py-12"
+                                    >
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                                                <span className="text-red-600 text-xl">
+                                                    !
+                                                </span>
+                                            </div>
+                                            <p className="text-red-600 font-medium">
+                                                Failed to load leads
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Please try again later
+                                            </p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : (
-                                rows.map((lead) => (
+                            ) : leads.length ? (
+                                leads.map((lead: any, idx: number) => (
                                     <TableRow
                                         key={lead._id}
-                                        className="hover:bg-stone-50"
+                                        className="hover:bg-gray-50 transition-colors border-b border-gray-100"
                                     >
-                                        <TableCell className="align-top">
-                                            <div className="font-medium flex items-center gap-2">
-                                                <IconBriefcase
-                                                    size={16}
-                                                    className="text-muted-foreground"
-                                                />
-                                                {lead.companyName}
+                                        {/* Company */}
+                                        <TableCell>
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-gray-900">
+                                                    {lead.companyName}
+                                                </p>
+                                                {lead.websiteUrl && (
+                                                    <a
+                                                        href={lead.websiteUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm text-blue-600 hover:text-blue-700 truncate"
+                                                    >
+                                                        {lead.websiteUrl.replace(
+                                                            /^https?:\/\/(www\.)?/,
+                                                            ''
+                                                        )}
+                                                    </a>
+                                                )}
                                             </div>
-                                            {lead.websiteUrl && (
-                                                <a
-                                                    href={
-                                                        lead.websiteUrl.startsWith(
-                                                            'http'
-                                                        )
-                                                            ? lead.websiteUrl
-                                                            : `https://${lead.websiteUrl}`
-                                                    }
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-xs text-blue-600 hover:underline ml-6"
-                                                >
-                                                    {lead.websiteUrl}
-                                                </a>
-                                            )}
                                         </TableCell>
 
-                                        <TableCell className="align-top">
-                                            <div className="flex items-center gap-2">
-                                                <IconUser
-                                                    size={16}
-                                                    className="text-muted-foreground"
-                                                />
-                                                <span>
-                                                    {
-                                                        lead.contactPerson
-                                                            ?.firstName
-                                                    }{' '}
-                                                    {
-                                                        lead.contactPerson
-                                                            ?.lastName
-                                                    }
-                                                </span>
-                                            </div>
-                                            {lead.designation && (
-                                                <div className="text-xs text-muted-foreground ml-6">
-                                                    {lead.designation}
+                                        {/* Contact Person */}
+                                        <TableCell>
+                                            {lead.contactPerson?.firstName && (
+                                                <div>
+                                                    <p className="font-medium text-gray-900 text-sm">
+                                                        {
+                                                            lead.contactPerson
+                                                                .firstName
+                                                        }{' '}
+                                                        {
+                                                            lead.contactPerson
+                                                                .lastName
+                                                        }
+                                                    </p>
+                                                    {lead.designation && (
+                                                        <p className="text-xs text-gray-500">
+                                                            {lead.designation}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             )}
                                         </TableCell>
 
-                                        <TableCell className="align-top">
-                                            <div className="flex flex-col gap-1">
-                                                {lead.emails?.length ? (
-                                                    lead.emails.map(
-                                                        (e, idx) => (
-                                                            <div
-                                                                key={idx}
-                                                                className="flex items-center gap-2"
-                                                            >
-                                                                <IconMail
-                                                                    size={14}
-                                                                    className="text-muted-foreground"
-                                                                />
-                                                                <a
-                                                                    href={`mailto:${e}`}
-                                                                    className="hover:underline"
-                                                                >
-                                                                    {e}
-                                                                </a>
-                                                            </div>
-                                                        )
-                                                    )
-                                                ) : (
-                                                    <span className="text-muted-foreground">
-                                                        —
-                                                    </span>
-                                                )}
+                                        {/* Contact Info */}
+                                        <TableCell>
+                                            <div className="space-y-1">
+                                                {Array.isArray(lead.emails) &&
+                                                    lead.emails.length > 0 && (
+                                                        <div>
+                                                            <p className="text-sm text-gray-700">
+                                                                {lead.emails[0]}
+                                                            </p>
+                                                            {lead.emails
+                                                                .length > 1 && (
+                                                                <span className="text-xs text-gray-500">
+                                                                    +
+                                                                    {lead.emails
+                                                                        .length -
+                                                                        1}{' '}
+                                                                    more
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                {Array.isArray(lead.phones) &&
+                                                    lead.phones.length > 0 && (
+                                                        <p className="text-sm text-gray-600">
+                                                            {lead.phones[0]}
+                                                        </p>
+                                                    )}
                                             </div>
                                         </TableCell>
 
-                                        <TableCell className="align-top">
-                                            <div className="flex flex-col gap-1">
-                                                {lead.phones?.length ? (
-                                                    lead.phones.map(
-                                                        (p, idx) => (
-                                                            <div
-                                                                key={idx}
-                                                                className="flex items-center gap-2"
-                                                            >
-                                                                <IconPhone
-                                                                    size={14}
-                                                                    className="text-muted-foreground"
-                                                                />
-                                                                <a
-                                                                    href={`tel:${p}`}
-                                                                    className="hover:underline"
-                                                                >
-                                                                    {p}
-                                                                </a>
-                                                            </div>
-                                                        )
-                                                    )
-                                                ) : (
-                                                    <span className="text-muted-foreground">
-                                                        —
-                                                    </span>
-                                                )}
-                                            </div>
+                                        {/* Location */}
+                                        <TableCell>
+                                            <span className="text-gray-700">
+                                                {lead.country}
+                                            </span>
                                         </TableCell>
 
-                                        <TableCell className="align-top">
-                                            <div className="flex items-center gap-2">
-                                                <IconWorld
-                                                    size={16}
-                                                    className="text-muted-foreground"
-                                                />
-                                                <span>
-                                                    {lead.country || '—'}
+                                        {/* Status */}
+                                        <TableCell>
+                                            <Badge
+                                                variant="outline"
+                                                className={`${
+                                                    statusColors[
+                                                        lead.status as LeadStatus
+                                                    ]
+                                                } border font-medium capitalize`}
+                                            >
+                                                {lead.status.replace('_', ' ')}
+                                            </Badge>
+                                        </TableCell>
+
+                                        {/* Team Access */}
+                                        <TableCell>
+                                            {lead.accessList &&
+                                            lead.accessList.length > 0 ? (
+                                                <div className="flex -space-x-2">
+                                                    {lead.accessList
+                                                        .slice(0, 4)
+                                                        .map(
+                                                            (
+                                                                access: any,
+                                                                index: number
+                                                            ) => (
+                                                                <Tooltip
+                                                                    key={index}
+                                                                >
+                                                                    <TooltipTrigger>
+                                                                        <Avatar className="h-8 w-8 border-2 border-white">
+                                                                            <AvatarImage
+                                                                                src={
+                                                                                    access
+                                                                                        .user
+                                                                                        ?.image
+                                                                                }
+                                                                                alt={`${access.user?.firstName} ${access.user?.lastName}`}
+                                                                            />
+                                                                            <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
+                                                                                {getInitials(
+                                                                                    access
+                                                                                        .user
+                                                                                        ?.firstName ||
+                                                                                        '',
+                                                                                    access
+                                                                                        .user
+                                                                                        ?.lastName ||
+                                                                                        ''
+                                                                                )}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <div className="text-xs">
+                                                                            <p className="font-semibold">
+                                                                                {
+                                                                                    access
+                                                                                        .user
+                                                                                        ?.firstName
+                                                                                }{' '}
+                                                                                {
+                                                                                    access
+                                                                                        .user
+                                                                                        ?.lastName
+                                                                                }
+                                                                            </p>
+                                                                            <p className="text-gray-600">
+                                                                                {
+                                                                                    access
+                                                                                        .user
+                                                                                        ?.email
+                                                                                }
+                                                                            </p>
+                                                                            <p className="text-gray-500 capitalize mt-0.5">
+                                                                                {
+                                                                                    access.role
+                                                                                }
+                                                                            </p>
+                                                                        </div>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            )
+                                                        )}
+                                                    {lead.accessList.length >
+                                                        4 && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger>
+                                                                <div className="h-8 w-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                                    <span className="text-xs font-medium text-gray-600">
+                                                                        +
+                                                                        {lead
+                                                                            .accessList
+                                                                            .length -
+                                                                            4}
+                                                                    </span>
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p className="text-xs">
+                                                                    {lead
+                                                                        .accessList
+                                                                        .length -
+                                                                        4}{' '}
+                                                                    more team
+                                                                    members
+                                                                </p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-gray-400">
+                                                    No access
                                                 </span>
-                                            </div>
-                                        </TableCell>
-
-                                        <TableCell className="align-top">
-                                            <LeadStatusBadge
-                                                status={lead.status}
-                                            />
-                                        </TableCell>
-
-                                        <TableCell className="align-top text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="h-8"
-                                                >
-                                                    View
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    className="h-8"
-                                                >
-                                                    Edit
-                                                </Button>
-                                            </div>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell
+                                        colSpan={6}
+                                        className="text-center py-12"
+                                    >
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                                                <span className="text-gray-400 text-xl">
+                                                    👤
+                                                </span>
+                                            </div>
+                                            <p className="text-gray-600 font-medium">
+                                                No leads found
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Try adjusting your filters or
+                                                search
+                                            </p>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
                             )}
                         </TableBody>
                     </Table>
                 </div>
 
-                {/* Footer / Pagination */}
-                <div className="p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div className="text-sm text-muted-foreground">
-                        {pageSize === 'all'
-                            ? `Showing all ${rows.length} ${
-                                  rows.length === 1 ? 'lead' : 'leads'
-                              }`
-                            : `Page ${page} of ${totalPages} • ${total} total`}
+                {/* Pagination */}
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-600">
+                        Showing{' '}
+                        <span className="font-medium text-gray-900">
+                            {(page - 1) * perPage + 1}
+                        </span>{' '}
+                        to{' '}
+                        <span className="font-medium text-gray-900">
+                            {Math.min(page * perPage, pagination.total)}
+                        </span>{' '}
+                        of{' '}
+                        <span className="font-medium text-gray-900">
+                            {pagination.total}
+                        </span>{' '}
+                        leads
                     </div>
-
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setPage(1)}
-                            disabled={!canPrev}
+                            disabled={page === 1}
+                            onClick={() => setPage((p) => p - 1)}
+                            className="gap-1"
                         >
-                            <IconChevronsLeft size={16} />
+                            <ChevronLeft className="h-4 w-4" />
+                            Previous
                         </Button>
+                        <div className="flex items-center gap-1">
+                            {Array.from(
+                                {
+                                    length: Math.min(5, pagination.totalPages),
+                                },
+                                (_, i) => {
+                                    let pageNum;
+                                    if (pagination.totalPages <= 5) {
+                                        pageNum = i + 1;
+                                    } else if (page <= 3) {
+                                        pageNum = i + 1;
+                                    } else if (
+                                        page >=
+                                        pagination.totalPages - 2
+                                    ) {
+                                        pageNum = pagination.totalPages - 4 + i;
+                                    } else {
+                                        pageNum = page - 2 + i;
+                                    }
+                                    return (
+                                        <Button
+                                            key={i}
+                                            variant={
+                                                page === pageNum
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            size="sm"
+                                            onClick={() => setPage(pageNum)}
+                                            className={
+                                                page === pageNum
+                                                    ? 'bg-gray-900 hover:bg-gray-800'
+                                                    : ''
+                                            }
+                                        >
+                                            {pageNum}
+                                        </Button>
+                                    );
+                                }
+                            )}
+                        </div>
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            disabled={!canPrev}
-                        >
-                            <IconChevronLeft size={16} />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                                setPage((p) => Math.min(totalPages, p + 1))
+                            disabled={
+                                page === pagination.totalPages ||
+                                pagination.totalPages === 0
                             }
-                            disabled={!canNext}
+                            onClick={() => setPage((p) => p + 1)}
+                            className="gap-1"
                         >
-                            <IconChevronRight size={16} />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage(totalPages)}
-                            disabled={!canNext}
-                        >
-                            <IconChevronsRight size={16} />
+                            Next
+                            <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }

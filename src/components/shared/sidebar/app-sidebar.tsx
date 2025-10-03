@@ -45,7 +45,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         alt="logo"
                         width={140}
                         height={40}
-                        className="w-auto h-auto"
                         priority
                     />
                 </Link>

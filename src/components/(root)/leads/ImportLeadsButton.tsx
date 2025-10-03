@@ -28,6 +28,7 @@ import {
     IconCircleDot,
     IconDatabaseImport,
     IconAlertTriangle,
+    IconFileTypeXls,
 } from '@tabler/icons-react';
 import { getClientSocket } from '@/lib/clientSocket';
 
@@ -150,7 +151,10 @@ export default function ImportLeadsButton() {
             }}
         >
             <DialogTrigger asChild>
-                <Button variant="default">Import Leads</Button>
+                <Button>
+                    <IconFileTypeXls />
+                    Import Leads
+                </Button>
             </DialogTrigger>
 
             <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-y-auto">
