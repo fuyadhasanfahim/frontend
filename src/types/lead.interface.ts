@@ -28,7 +28,12 @@ export interface ILead {
     assignedAt?: Date;
 
     accessList: {
-        user: string;
+        user: {
+            firstName: string;
+            lastName: string;
+            email: string;
+            image: string;
+        };
         role: 'owner' | 'editor' | 'viewer';
         grantedBy: string;
         grantedAt: Date;

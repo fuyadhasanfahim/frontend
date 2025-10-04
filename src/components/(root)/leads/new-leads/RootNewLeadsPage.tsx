@@ -426,9 +426,9 @@ export default function RootNewLeadsPage() {
             </Card>
 
             <p className="text-sm text-muted-foreground">
-                Tips: Optimized for performance with 100+ rows. Use "+ 100 Rows"
-                to quickly add more. Multiple emails and phones can be added by
-                pressing Enter or comma.
+                Tips: Optimized for performance with 100+ rows. Use &quot;+ 100
+                Rows&quot; to quickly add more. Multiple emails and phones can
+                be added by pressing Enter or comma.
             </p>
         </div>
     );

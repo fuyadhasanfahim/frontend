@@ -31,6 +31,7 @@ import { useRouter } from 'next/navigation';
 
 export default function SignUpForm() {
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const form = useForm<SignUpFormValues>({
         resolver: zodResolver(signupSchema),
@@ -188,9 +189,6 @@ export default function SignUpForm() {
                                 control={form.control}
                                 name="password"
                                 render={({ field }) => {
-                                    const [showPassword, setShowPassword] =
-                                        useState(false);
-
                                     return (
                                         <FormItem>
                                             <FormLabel>Password</FormLabel>

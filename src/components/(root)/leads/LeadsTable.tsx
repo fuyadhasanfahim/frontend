@@ -30,6 +30,8 @@ import {
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ILead } from '@/types/lead.interface';
+import Link from 'next/link';
 
 type LeadStatus =
     | 'new'
@@ -299,7 +301,7 @@ export default function LeadsTable() {
                                     </TableCell>
                                 </TableRow>
                             ) : leads.length ? (
-                                leads.map((lead: any, idx: number) => (
+                                leads.map((lead: ILead) => (
                                     <TableRow
                                         key={lead._id}
                                         className="hover:bg-gray-50 transition-colors border-b border-gray-100"
@@ -311,7 +313,7 @@ export default function LeadsTable() {
                                                     {lead.companyName}
                                                 </p>
                                                 {lead.websiteUrl && (
-                                                    <a
+                                                    <Link
                                                         href={lead.websiteUrl}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
@@ -321,7 +323,7 @@ export default function LeadsTable() {
                                                             /^https?:\/\/(www\.)?/,
                                                             ''
                                                         )}
-                                                    </a>
+                                                    </Link>
                                                 )}
                                             </div>
                                         </TableCell>
@@ -409,7 +411,20 @@ export default function LeadsTable() {
                                                         .slice(0, 4)
                                                         .map(
                                                             (
-                                                                access: any,
+                                                                access: {
+                                                                    user: {
+                                                                        firstName: string;
+                                                                        lastName: string;
+                                                                        email: string;
+                                                                        image: string;
+                                                                    };
+                                                                    role:
+                                                                        | 'owner'
+                                                                        | 'editor'
+                                                                        | 'viewer';
+                                                                    grantedBy: string;
+                                                                    grantedAt: Date;
+                                                                },
                                                                 index: number
                                                             ) => (
                                                                 <Tooltip

@@ -14,20 +14,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
     IconLoader2,
     IconFileSpreadsheet,
     IconX,
     IconCheck,
     IconCircleDot,
     IconDatabaseImport,
-    IconAlertTriangle,
     IconFileTypeXls,
 } from '@tabler/icons-react';
 import { getClientSocket } from '@/lib/clientSocket';
@@ -46,7 +38,6 @@ type ProgressPayload = {
 export default function ImportLeadsButton() {
     const [open, setOpen] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
-    const [rowsToShow, setRowsToShow] = useState<number | 'all'>('all');
 
     const [uploadId, setUploadId] = useState<string | null>(null);
     const [progress, setProgress] = useState<ProgressPayload | null>(null);
@@ -136,7 +127,6 @@ export default function ImportLeadsButton() {
         setUploadId(null);
         setProgress(null);
         setIsSubscribed(false);
-        setRowsToShow('all');
         setOpen(false);
     };
 

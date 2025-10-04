@@ -4,12 +4,13 @@ import {
     FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react';
 import { setAccessToken, signOut } from '../features/auth/authSlice';
+import { RootState } from '../store';
 
 const baseQuery = fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_URL! + '/api/v1',
     credentials: 'include',
     prepareHeaders: (headers, { getState }) => {
-        const token = (getState() as any).auth?.accessToken;
+        const token = (getState() as RootState).auth?.accessToken;
         if (token) {
             headers.set('authorization', `Bearer ${token}`);
         }
@@ -64,5 +65,6 @@ export const apiSlice = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithReauth,
     tagTypes: ['User'],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     endpoints: (_builder) => ({}),
 });
