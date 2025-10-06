@@ -6,6 +6,24 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
+import {
+    IconDeviceFloppy,
+    IconHash,
+    IconLoader2,
+    IconPlus,
+    IconRefresh,
+} from '@tabler/icons-react';
+import { toast } from 'sonner';
+import { useBulkCreateLeadsMutation } from '@/redux/features/lead/leadApi';
 
 // --- Types ---------------------------------------------------------------
 export type LeadRow = {
@@ -36,7 +54,7 @@ const CORE_COLUMNS = [
     { key: 'notes', label: 'Notes', width: 200 },
 ] as const;
 
-// --- Optimized Tags Input -----------------------------------------------
+// --- Tags Input ----------------------------------------------------------
 const TagsInput = React.memo(function TagsInput({
     value,
     onChange,
@@ -65,9 +83,13 @@ const TagsInput = React.memo(function TagsInput({
     );
 
     return (
-        <div className="flex flex-wrap gap-1 items-center min-h-9 px-2 py-1 bg-background">
+        <div className="flex flex-wrap gap-1 items-center min-h-9 px-2 py-1 bg-transparent">
             {value.map((t, i) => (
-                <Badge key={i} variant="secondary" className="gap-1 text-xs">
+                <Badge
+                    key={i}
+                    variant="secondary"
+                    className="gap-1 text-xs flex items-center"
+                >
                     {t}
                     <button
                         type="button"
@@ -78,8 +100,9 @@ const TagsInput = React.memo(function TagsInput({
                     </button>
                 </Badge>
             ))}
-            <input
-                className="outline-none flex-1 min-w-[8ch] bg-transparent text-sm"
+            <Input
+                className="border-0 bg-transparent focus-visible:ring-1 rounded-none h-9 text-sm px-2 shadow-none"
+                autoComplete="off"
                 placeholder={placeholder}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -101,7 +124,6 @@ const TagsInput = React.memo(function TagsInput({
     );
 });
 
-// --- Optimized Cell Components ------------------------------------------
 const TextCell = React.memo(function TextCell({
     value,
     onChange,
@@ -116,7 +138,7 @@ const TextCell = React.memo(function TextCell({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="border-0 focus-visible:ring-1 rounded-none h-9 text-sm"
+            className="border-0 bg-transparent focus-visible:ring-1 rounded-none h-9 text-sm px-2 shadow-none"
         />
     );
 });
@@ -139,7 +161,6 @@ const TagsCell = React.memo(function TagsCell({
     );
 });
 
-// --- Main Component ------------------------------------------------------
 export default function RootNewLeadsPage() {
     const [rows, setRows] = useState<LeadRow[]>(() =>
         Array.from({ length: 100 }, () => ({
@@ -157,6 +178,7 @@ export default function RootNewLeadsPage() {
     );
 
     const [extraCols, setExtraCols] = useState<string[]>([]);
+    const [bulkCreateLeads, { isLoading }] = useBulkCreateLeadsMutation();
 
     const allColumns = useMemo(() => {
         return [
@@ -212,54 +234,26 @@ export default function RootNewLeadsPage() {
     }, []);
 
     const setCell = useCallback(
-        (rowIndex: number, key: string, value: string | string[]) => {
+        async (rowIndex: number, key: string, value: string | string[]) => {
             setRows((rs) =>
                 rs.map((r, i) => (i === rowIndex ? { ...r, [key]: value } : r))
             );
+
+            const updatedLead = {
+                ...rows[rowIndex],
+                [key]: value,
+            };
+
+            try {
+                const res = await bulkCreateLeads([updatedLead]).unwrap();
+                console.log(res);
+            } catch (error) {
+                console.log(error);
+                toast.error('Failed to save lead');
+            }
         },
-        []
+        [rows, bulkCreateLeads]
     );
-
-    const saveAll = useCallback(async () => {
-        const leads = rows
-            .filter((r) => r.companyName?.trim())
-            .map((r) => ({
-                companyName: String(r.companyName).trim(),
-                websiteUrl: r.websiteUrl || undefined,
-                emails: (r.emails || []).map((e) =>
-                    String(e).trim().toLowerCase()
-                ),
-                phones: (r.phones || []).map((p) => String(p).trim()),
-                address: r.address || undefined,
-                contactPerson: {
-                    firstName: String(r.firstName || 'Unknown').trim(),
-                    lastName: String(r.lastName || 'Unknown').trim(),
-                },
-                designation: r.designation || undefined,
-                country: String(r.country || '').trim(),
-                status: 'new',
-                notes: r.notes || undefined,
-                extra: Object.fromEntries(
-                    Object.entries(r).filter(([k]) => k.startsWith('X_')) as [
-                        string,
-                        string
-                    ][]
-                ),
-            }));
-
-        try {
-            const res = await fetch('/leads/bulk-create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ leads }),
-            });
-            if (!res.ok) throw new Error(await res.text());
-            alert('All leads saved successfully!');
-        } catch (err) {
-            console.error(err);
-            alert('Failed to save. Check console for details.');
-        }
-    }, [rows]);
 
     const resetTable = useCallback(() => {
         setRows(
@@ -280,155 +274,174 @@ export default function RootNewLeadsPage() {
     }, []);
 
     return (
-        <div className="p-4 md:p-6 space-y-4">
-            <Card className="overflow-hidden">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-xl">Leads Spreadsheet</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                        <Button size="sm" onClick={() => addRows(1)}>
-                            + Row
+        <div className="space-y-4">
+            <Card className="overflow-hidden border border-border/60 shadow-sm">
+                <CardHeader className="pb-2 flex items-center justify-between">
+                    <CardTitle className="text-xl font-semibold">
+                        Leads Spreadsheet
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="link"
+                            onClick={() => addRows(1)}
+                        >
+                            <IconPlus stroke={2} /> Row
                         </Button>
                         <Button
                             size="sm"
-                            variant="secondary"
+                            variant="link"
                             onClick={() => addRows(100)}
                         >
-                            + 100 Rows
+                            <IconPlus stroke={2} /> 100 Rows
                         </Button>
-                        <Button size="sm" onClick={() => addColumns(1)}>
-                            + Column
+                        <Button
+                            size="sm"
+                            variant="link"
+                            onClick={() => addColumns(1)}
+                        >
+                            <IconPlus stroke={2} /> Column
                         </Button>
-                        <div className="ml-auto flex gap-2">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={resetTable}
-                            >
-                                Reset
-                            </Button>
-                            <Button size="sm" onClick={saveAll}>
-                                Save All
-                            </Button>
-                        </div>
+                        <Button size="sm" variant="link" onClick={resetTable}>
+                            <IconRefresh stroke={2} /> Reset
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="link"
+                            onClick={() => toast.info('Auto-save is enabled!')}
+                        >
+                            {!isLoading ? (
+                                <IconDeviceFloppy stroke={2} />
+                            ) : (
+                                <IconLoader2
+                                    stroke={2}
+                                    className="animate-spin"
+                                />
+                            )}
+                            Save
+                        </Button>
                     </div>
+                </CardHeader>
 
-                    {/* Optimized Table with Fixed Header */}
-                    <ScrollArea className="h-[600px] border rounded-lg">
-                        <div className="relative">
-                            {/* Sticky Header */}
-                            <div className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
-                                <div className="flex border-b">
-                                    <div className="sticky left-0 z-20 bg-muted/95 w-12 border-r flex-shrink-0">
-                                        <div className="h-12 flex items-center justify-center">
-                                            <span className="text-xs text-muted-foreground">
-                                                #
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {allColumns.map((col) => (
-                                        <div
-                                            key={col.key}
-                                            className="border-r px-3 py-3 text-left"
-                                            style={{
-                                                minWidth: col.width,
-                                                width: col.width,
-                                            }}
-                                        >
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                                {col.label}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Table Body */}
-                            <div>
-                                {rows.map((row, rIdx) => (
-                                    <div
-                                        key={rIdx}
-                                        className="flex border-b hover:bg-muted/30 transition-colors"
-                                    >
-                                        {/* Row Number */}
-                                        <div className="sticky left-0 z-10 bg-background w-12 border-r flex-shrink-0">
-                                            <div className="h-9 flex items-center justify-center">
-                                                <span className="text-xs text-muted-foreground">
-                                                    {rIdx + 1}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Cells */}
+                <CardContent>
+                    <div className="rounded-md border overflow-hidden">
+                        <ScrollArea className="h-[600px] w-full">
+                            <Table>
+                                <TableHeader className="sticky top-0 z-10 bg-muted">
+                                    <TableRow>
+                                        <TableHead className="w-12 text-center text-muted-foreground">
+                                            <IconHash
+                                                strokeWidth={2}
+                                                width={16}
+                                                height={16}
+                                            />
+                                        </TableHead>
                                         {allColumns.map((col) => (
-                                            <div
+                                            <TableHead
                                                 key={col.key}
-                                                className="border-r"
                                                 style={{
                                                     minWidth: col.width,
                                                     width: col.width,
                                                 }}
+                                                className="text-sm font-medium text-muted-foreground"
                                             >
-                                                {col.type === 'tags' ? (
-                                                    <TagsCell
-                                                        value={
-                                                            Array.isArray(
-                                                                row[col.key]
-                                                            )
-                                                                ? (row[
-                                                                      col.key
-                                                                  ] as string[])
-                                                                : []
-                                                        }
-                                                        onChange={(value) =>
-                                                            setCell(
-                                                                rIdx,
-                                                                col.key,
-                                                                value
-                                                            )
-                                                        }
-                                                        placeholder={
-                                                            col.key === 'emails'
-                                                                ? 'email@domain.com'
-                                                                : '01xxxxxxxxx'
-                                                        }
-                                                    />
-                                                ) : (
-                                                    <TextCell
-                                                        value={
-                                                            typeof row[
-                                                                col.key
-                                                            ] === 'string'
-                                                                ? (row[
-                                                                      col.key
-                                                                  ] as string)
-                                                                : ''
-                                                        }
-                                                        onChange={(value) =>
-                                                            setCell(
-                                                                rIdx,
-                                                                col.key,
-                                                                value
-                                                            )
-                                                        }
-                                                        placeholder={col.label}
-                                                    />
-                                                )}
-                                            </div>
+                                                {col.label}
+                                            </TableHead>
                                         ))}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </ScrollArea>
+                                    </TableRow>
+                                </TableHeader>
+
+                                <TableBody>
+                                    {rows.map((row, rIdx) => (
+                                        <TableRow
+                                            key={rIdx}
+                                            className={cn(
+                                                rIdx % 2 === 0
+                                                    ? 'bg-muted/20'
+                                                    : 'bg-background',
+                                                'hover:bg-accent/40 transition-colors'
+                                            )}
+                                        >
+                                            {/* Row number */}
+                                            <TableCell className="text-xs text-muted-foreground text-center w-12">
+                                                {rIdx + 1}
+                                            </TableCell>
+
+                                            {/* Cells */}
+                                            {allColumns.map((col) => (
+                                                <TableCell
+                                                    key={col.key}
+                                                    style={{
+                                                        minWidth: col.width,
+                                                        width: col.width,
+                                                    }}
+                                                    className="align-middle p-0 border-l"
+                                                >
+                                                    {col.type === 'tags' ? (
+                                                        <TagsCell
+                                                            value={
+                                                                Array.isArray(
+                                                                    row[col.key]
+                                                                )
+                                                                    ? (row[
+                                                                          col
+                                                                              .key
+                                                                      ] as string[])
+                                                                    : []
+                                                            }
+                                                            onChange={(value) =>
+                                                                setCell(
+                                                                    rIdx,
+                                                                    col.key,
+                                                                    value
+                                                                )
+                                                            }
+                                                            placeholder={
+                                                                col.key ===
+                                                                'emails'
+                                                                    ? 'email@domain.com'
+                                                                    : '01xxxxxxxxx'
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        <TextCell
+                                                            value={
+                                                                typeof row[
+                                                                    col.key
+                                                                ] === 'string'
+                                                                    ? (row[
+                                                                          col
+                                                                              .key
+                                                                      ] as string)
+                                                                    : ''
+                                                            }
+                                                            onChange={(value) =>
+                                                                setCell(
+                                                                    rIdx,
+                                                                    col.key,
+                                                                    value
+                                                                )
+                                                            }
+                                                            placeholder={
+                                                                col.label
+                                                            }
+                                                        />
+                                                    )}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </div>
                 </CardContent>
             </Card>
 
-            <p className="text-sm text-muted-foreground">
-                Tips: Optimized for performance with 100+ rows. Use &quot;+ 100
-                Rows&quot; to quickly add more. Multiple emails and phones can
-                be added by pressing Enter or comma.
+            <p className="text-xs text-muted-foreground">
+                Press <kbd>Enter</kbd> or <kbd>,</kbd> to add multiple
+                emails/phones. Auto-save is enabled: changes are sent to the
+                server immediately.
             </p>
         </div>
     );

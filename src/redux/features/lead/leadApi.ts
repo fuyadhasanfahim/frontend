@@ -32,7 +32,19 @@ export const leadApi = apiSlice.injectEndpoints({
                 },
             }),
         }),
+        bulkCreateLeads: builder.mutation({
+            query: (leads) => ({
+                url: '/leads/bulk-create',
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: { leads },
+            }),
+        }),
     }),
 });
 
-export const { useGetLeadsQuery, useImportLeadsMutation } = leadApi;
+export const {
+    useGetLeadsQuery,
+    useImportLeadsMutation,
+    useBulkCreateLeadsMutation,
+} = leadApi;
