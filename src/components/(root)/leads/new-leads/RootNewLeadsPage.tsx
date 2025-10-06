@@ -1,11 +1,17 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, {
+    useMemo,
+    useState,
+    useCallback,
+    useRef,
+    useEffect,
+} from 'react';
+import debounce from 'lodash.debounce';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Table,
     TableBody,
@@ -24,9 +30,10 @@ import {
 } from '@tabler/icons-react';
 import { toast } from 'sonner';
 import { useBulkCreateLeadsMutation } from '@/redux/features/lead/leadApi';
+import { v4 as uuid } from 'uuid';
 
-// --- Types ---------------------------------------------------------------
 export type LeadRow = {
+    rowId: string;
     companyName: string;
     websiteUrl?: string;
     emails: string[];
@@ -40,7 +47,6 @@ export type LeadRow = {
     [key: string]: string | string[] | undefined;
 };
 
-// Core columns configuration
 const CORE_COLUMNS = [
     { key: 'companyName', label: 'Company Name', width: 200 },
     { key: 'websiteUrl', label: 'Website', width: 150 },
@@ -54,7 +60,6 @@ const CORE_COLUMNS = [
     { key: 'notes', label: 'Notes', width: 200 },
 ] as const;
 
-// --- Tags Input ----------------------------------------------------------
 const TagsInput = React.memo(function TagsInput({
     value,
     onChange,
@@ -163,7 +168,8 @@ const TagsCell = React.memo(function TagsCell({
 
 export default function RootNewLeadsPage() {
     const [rows, setRows] = useState<LeadRow[]>(() =>
-        Array.from({ length: 100 }, () => ({
+        Array.from({ length: 100 }, (_, idx) => ({
+            rowId: uuid(),
             companyName: '',
             websiteUrl: '',
             emails: [],
@@ -203,7 +209,8 @@ export default function RootNewLeadsPage() {
     const addRows = useCallback((count = 1) => {
         setRows((r) => [
             ...r,
-            ...Array.from({ length: count }, () => ({
+            ...Array.from({ length: count }, (_, idx) => ({
+                rowId: `${Date.now()}-${idx}`,
                 companyName: '',
                 websiteUrl: '',
                 emails: [],
@@ -233,8 +240,22 @@ export default function RootNewLeadsPage() {
         });
     }, []);
 
+    const debouncedSave = useMemo(
+        () =>
+            debounce(async (lead: LeadRow) => {
+                try {
+                    await bulkCreateLeads({ leads: [lead] }).unwrap();
+                    console.log('Saved:', lead.rowId);
+                } catch (error) {
+                    console.error(error);
+                    toast.error('Failed to save lead');
+                }
+            }, 600),
+        [bulkCreateLeads]
+    );
+
     const setCell = useCallback(
-        async (rowIndex: number, key: string, value: string | string[]) => {
+        (rowIndex: number, key: string, value: string | string[]) => {
             setRows((rs) =>
                 rs.map((r, i) => (i === rowIndex ? { ...r, [key]: value } : r))
             );
@@ -244,20 +265,15 @@ export default function RootNewLeadsPage() {
                 [key]: value,
             };
 
-            try {
-                const res = await bulkCreateLeads([updatedLead]).unwrap();
-                console.log(res);
-            } catch (error) {
-                console.log(error);
-                toast.error('Failed to save lead');
-            }
+            debouncedSave(updatedLead);
         },
-        [rows, bulkCreateLeads]
+        [rows, debouncedSave]
     );
 
     const resetTable = useCallback(() => {
         setRows(
-            Array.from({ length: 100 }, () => ({
+            Array.from({ length: 100 }, (_, idx) => ({
+                rowId: `${Date.now()}-${idx}`,
                 companyName: '',
                 websiteUrl: '',
                 emails: [],
@@ -271,6 +287,61 @@ export default function RootNewLeadsPage() {
             }))
         );
         setExtraCols([]);
+    }, []);
+
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+    const isDragging = useRef(false);
+    const startX = useRef(0);
+    const startY = useRef(0);
+    const scrollLeft = useRef(0);
+    const scrollTop = useRef(0);
+
+    const handlePointerDown = (e: React.PointerEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('input, button, textarea, select')) return;
+
+        if (!scrollRef.current) return;
+        isDragging.current = true;
+
+        scrollRef.current.setPointerCapture(e.pointerId);
+
+        startX.current = e.pageX;
+        startY.current = e.pageY;
+        scrollLeft.current = scrollRef.current.scrollLeft;
+        scrollTop.current = scrollRef.current.scrollTop;
+
+        scrollRef.current.style.cursor = 'grabbing';
+        scrollRef.current.style.userSelect = 'none';
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+        if (!isDragging.current || !scrollRef.current) return;
+
+        e.preventDefault();
+
+        const dx = e.pageX - startX.current;
+        const dy = e.pageY - startY.current;
+
+        scrollRef.current.scrollLeft = scrollLeft.current - dx * 1.2;
+        scrollRef.current.scrollTop = scrollTop.current - dy * 1.2;
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+        if (!scrollRef.current) return;
+        isDragging.current = false;
+        scrollRef.current.releasePointerCapture(e.pointerId);
+
+        scrollRef.current.style.cursor = 'grab';
+        scrollRef.current.style.userSelect = 'auto';
+    };
+
+    useEffect(() => {
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+        };
     }, []);
 
     return (
@@ -325,123 +396,140 @@ export default function RootNewLeadsPage() {
 
                 <CardContent>
                     <div className="rounded-md border overflow-hidden">
-                        <ScrollArea className="h-[600px] w-full">
-                            <Table>
-                                <TableHeader className="sticky top-0 z-10 bg-muted">
-                                    <TableRow>
-                                        <TableHead className="w-12 text-center text-muted-foreground">
-                                            <IconHash
-                                                strokeWidth={2}
-                                                width={16}
-                                                height={16}
-                                            />
-                                        </TableHead>
-                                        {allColumns.map((col) => (
-                                            <TableHead
-                                                key={col.key}
-                                                style={{
-                                                    minWidth: col.width,
-                                                    width: col.width,
-                                                }}
-                                                className="text-sm font-medium text-muted-foreground"
-                                            >
-                                                {col.label}
+                        <div
+                            ref={scrollRef}
+                            className="w-full h-[600px] overflow-auto cursor-grab"
+                            onPointerDown={handlePointerDown}
+                            style={{
+                                cursor: isDragging.current
+                                    ? 'grabbing'
+                                    : 'grab',
+                            }}
+                        >
+                            <div className="inline-block min-w-full">
+                                <Table className="w-full">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
+                                        <TableRow>
+                                            <TableHead className="w-12 text-center text-muted-foreground">
+                                                <IconHash
+                                                    strokeWidth={2}
+                                                    width={16}
+                                                    height={16}
+                                                />
                                             </TableHead>
-                                        ))}
-                                    </TableRow>
-                                </TableHeader>
-
-                                <TableBody>
-                                    {rows.map((row, rIdx) => (
-                                        <TableRow
-                                            key={rIdx}
-                                            className={cn(
-                                                rIdx % 2 === 0
-                                                    ? 'bg-muted/20'
-                                                    : 'bg-background',
-                                                'hover:bg-accent/40 transition-colors'
-                                            )}
-                                        >
-                                            {/* Row number */}
-                                            <TableCell className="text-xs text-muted-foreground text-center w-12">
-                                                {rIdx + 1}
-                                            </TableCell>
-
-                                            {/* Cells */}
                                             {allColumns.map((col) => (
-                                                <TableCell
+                                                <TableHead
                                                     key={col.key}
                                                     style={{
                                                         minWidth: col.width,
                                                         width: col.width,
                                                     }}
-                                                    className="align-middle p-0 border-l"
+                                                    className="text-sm font-medium text-muted-foreground"
                                                 >
-                                                    {col.type === 'tags' ? (
-                                                        <TagsCell
-                                                            value={
-                                                                Array.isArray(
-                                                                    row[col.key]
-                                                                )
-                                                                    ? (row[
-                                                                          col
-                                                                              .key
-                                                                      ] as string[])
-                                                                    : []
-                                                            }
-                                                            onChange={(value) =>
-                                                                setCell(
-                                                                    rIdx,
-                                                                    col.key,
-                                                                    value
-                                                                )
-                                                            }
-                                                            placeholder={
-                                                                col.key ===
-                                                                'emails'
-                                                                    ? 'email@domain.com'
-                                                                    : '01xxxxxxxxx'
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <TextCell
-                                                            value={
-                                                                typeof row[
-                                                                    col.key
-                                                                ] === 'string'
-                                                                    ? (row[
-                                                                          col
-                                                                              .key
-                                                                      ] as string)
-                                                                    : ''
-                                                            }
-                                                            onChange={(value) =>
-                                                                setCell(
-                                                                    rIdx,
-                                                                    col.key,
-                                                                    value
-                                                                )
-                                                            }
-                                                            placeholder={
-                                                                col.label
-                                                            }
-                                                        />
-                                                    )}
-                                                </TableCell>
+                                                    {col.label}
+                                                </TableHead>
                                             ))}
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {rows.map((row, rIdx) => (
+                                            <TableRow
+                                                key={row.rowId}
+                                                className={cn(
+                                                    rIdx % 2 === 0
+                                                        ? 'bg-muted/20'
+                                                        : 'bg-background',
+                                                    'hover:bg-accent/40 transition-colors'
+                                                )}
+                                            >
+                                                <TableCell className="text-xs text-muted-foreground text-center w-12">
+                                                    {rIdx + 1}
+                                                </TableCell>
+
+                                                {allColumns.map((col) => (
+                                                    <TableCell
+                                                        key={col.key}
+                                                        style={{
+                                                            minWidth: col.width,
+                                                            width: col.width,
+                                                        }}
+                                                        className="align-middle p-0 border-l"
+                                                    >
+                                                        {col.type === 'tags' ? (
+                                                            <TagsCell
+                                                                value={
+                                                                    Array.isArray(
+                                                                        row[
+                                                                            col
+                                                                                .key
+                                                                        ]
+                                                                    )
+                                                                        ? (row[
+                                                                              col
+                                                                                  .key
+                                                                          ] as string[])
+                                                                        : []
+                                                                }
+                                                                onChange={(
+                                                                    value
+                                                                ) =>
+                                                                    setCell(
+                                                                        rIdx,
+                                                                        col.key,
+                                                                        value
+                                                                    )
+                                                                }
+                                                                placeholder={
+                                                                    col.key ===
+                                                                    'emails'
+                                                                        ? 'email@domain.com'
+                                                                        : '01xxxxxxxxx'
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <TextCell
+                                                                value={
+                                                                    typeof row[
+                                                                        col.key
+                                                                    ] ===
+                                                                    'string'
+                                                                        ? (row[
+                                                                              col
+                                                                                  .key
+                                                                          ] as string)
+                                                                        : ''
+                                                                }
+                                                                onChange={(
+                                                                    value
+                                                                ) =>
+                                                                    setCell(
+                                                                        rIdx,
+                                                                        col.key,
+                                                                        value
+                                                                    )
+                                                                }
+                                                                placeholder={
+                                                                    col.label
+                                                                }
+                                                            />
+                                                        )}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
 
             <p className="text-xs text-muted-foreground">
                 Press <kbd>Enter</kbd> or <kbd>,</kbd> to add multiple
-                emails/phones. Auto-save is enabled: changes are sent to the
-                server immediately.
+                emails/phones. Auto-save is enabled: changes are debounced
+                (saves after you pause typing).
             </p>
         </div>
     );
