@@ -169,7 +169,7 @@ const TagsCell = React.memo(function TagsCell({
 
 export default function RootNewLeadsPage() {
     const [rows, setRows] = useState<LeadRow[]>(() =>
-        Array.from({ length: 100 }, (_) => ({
+        Array.from({ length: 100 }, () => ({
             rowId: uuid(),
             companyName: '',
             websiteUrl: '',

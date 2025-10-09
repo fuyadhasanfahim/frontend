@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/sidebar';
 import { NavMain } from './nav-main';
 import Link from 'next/link';
-import { IconFileTypeXls, IconLayoutDashboard } from '@tabler/icons-react';
 import Image from 'next/image';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

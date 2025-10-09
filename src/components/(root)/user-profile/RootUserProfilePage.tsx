@@ -12,7 +12,6 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useSignedUser } from '@/hooks/useSignedUser';
 import {
-    IconBell,
     IconBrandFacebook,
     IconBrandInstagram,
     IconBrandLinkedin,

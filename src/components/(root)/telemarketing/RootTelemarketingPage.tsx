@@ -28,7 +28,8 @@ import {
     SelectItem,
     SelectValue,
 } from '@/components/ui/select';
-import { ILeadAssignment } from '@/types/lead-assignment.interface';
+import { IUser } from '@/types/user.interface';
+import { ILead } from '@/types/lead.interface';
 
 export default function UserLeadsPage() {
     const [selectedUser, setSelectedUser] = useState<string | undefined>(
@@ -56,22 +57,6 @@ export default function UserLeadsPage() {
             alert('Please select telemarketer, leads, and deadline');
             return;
         }
-
-        const assignment: Partial<ILeadAssignment> = {
-            telemarketer: selectedUser as any,
-            assignedBy: 'currentAdminId' as any,
-            leads: selectedLeads as any,
-            totalTarget: selectedLeads.length,
-            deadline,
-            status: 'active',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            completedCount: 0,
-            completedLeads: [],
-        };
-
-        console.log('Assignment payload:', assignment);
-        // TODO: call mutation to save in backend
     };
 
     return (
@@ -94,7 +79,7 @@ export default function UserLeadsPage() {
                                     <SelectValue placeholder="Select a telemarketer" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {usersData?.users.map((u: any) => (
+                                    {usersData?.users.map((u: IUser) => (
                                         <SelectItem key={u._id} value={u._id}>
                                             {u.firstName} {u.lastName} ({u.role}
                                             )
@@ -155,7 +140,7 @@ export default function UserLeadsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {leadsData?.data?.map((lead: any) => (
+                                        {leadsData?.data?.map((lead: ILead) => (
                                             <TableRow key={lead._id}>
                                                 <TableCell>
                                                     <input
