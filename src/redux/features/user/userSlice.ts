@@ -1,25 +1,5 @@
+import { IUser } from '@/types/user.interface';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-
-export interface IUser {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    image: string;
-    role: string;
-
-    resetPasswordToken?: string;
-    resetPasswordExpiry: Date;
-
-    teamId: string;
-
-    isActive: boolean;
-    lastLogin: Date;
-
-    createdAt: Date;
-    updatedAt: Date;
-}
 
 interface UserState {
     user: IUser | null;

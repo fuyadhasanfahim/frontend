@@ -14,20 +14,10 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
+import { data } from '@/data/site-header';
 
 export function SiteHeader() {
     const pathname = usePathname();
-
-    const data = [
-        {
-            location: '/dashboard',
-            title: 'Dashboard',
-        },
-        {
-            location: '/leads',
-            title: 'Leads',
-        },
-    ];
 
     return (
         <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">

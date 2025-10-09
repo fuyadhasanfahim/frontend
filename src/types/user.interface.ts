@@ -1,15 +1,32 @@
 export interface IUser {
+    _id: string;
     firstName: string;
     lastName?: string;
     email: string;
     phone: string;
-    image?: string;
+    image: string;
+    designation: string;
+    address: string;
+    country: string;
+    bio: string;
+    socialLinks?: {
+        icon: string;
+        username: string;
+        url: string;
+        platform: string;
+        color: string;
+    }[];
+    createdAt: Date;
+    updatedAt: Date;
+
+    password: string;
     resetPasswordToken?: string;
     resetPasswordExpiry?: Date;
 
     role:
         | 'super-admin'
         | 'admin'
+        | 'lead-generator'
         | 'telemarketer'
         | 'digital-marketer'
         | 'seo-executive'

@@ -1,5 +1,6 @@
 import { apiSlice } from '@/redux/api/apiSlice';
-import { setUser, clearUser, IUser } from './userSlice';
+import { setUser, clearUser } from './userSlice';
+import { IUser } from '@/types/user.interface';
 
 interface UserResponse {
     success: boolean;
@@ -24,7 +25,42 @@ export const userApi = apiSlice.injectEndpoints({
                 }
             },
         }),
+        updateUser: builder.mutation<UserResponse, Partial<IUser>>({
+            query: (user) => ({
+                url: '/users/update-user',
+                method: 'PUT',
+                body: user,
+            }),
+            async onQueryStarted(_, { dispatch, queryFulfilled }) {
+                try {
+                    const { data } = await queryFulfilled;
+                    if (data?.success && data.user) {
+                        dispatch(setUser(data.user));
+                    }
+                } catch {
+                    dispatch(clearUser());
+                }
+            },
+        }),
+        getAllUsers: builder.query({
+            query: () => ({
+                url: `/users/get-all-users`,
+                method: 'GET',
+            }),
+        }),
+        updatePassword: builder.mutation({
+            query: (data) => ({
+                url: '/users/update-password',
+                method: 'PUT',
+                body: data,
+            }),
+        }),
     }),
 });
 
-export const { useGetSignedUserQuery } = userApi;
+export const {
+    useGetSignedUserQuery,
+    useGetAllUsersQuery,
+    useUpdateUserMutation,
+    useUpdatePasswordMutation,
+} = userApi;

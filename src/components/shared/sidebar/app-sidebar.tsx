@@ -11,26 +11,6 @@ import Link from 'next/link';
 import { IconFileTypeXls, IconLayoutDashboard } from '@tabler/icons-react';
 import Image from 'next/image';
 
-const data = {
-    user: {
-        name: 'shadcn',
-        email: 'm@example.com',
-        avatar: '/avatars/shadcn.jpg',
-    },
-    navMain: [
-        {
-            title: 'Dashboard',
-            url: '/dashboard',
-            icon: IconLayoutDashboard,
-        },
-        {
-            title: 'Leads',
-            url: '/leads',
-            icon: IconFileTypeXls,
-        },
-    ],
-};
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
         <Sidebar
@@ -50,7 +30,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={data.navMain} />
+                <NavMain />
             </SidebarContent>
         </Sidebar>
     );

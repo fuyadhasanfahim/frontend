@@ -4,6 +4,7 @@ import RootNewLeadsPage from '@/components/(root)/leads/new-leads/RootNewLeadsPa
 
 export const metadata: Metadata = {
     title: 'New Leads | Job Portal',
+    description: 'This is the new leads page',
 };
 
 export default function NewLeadsPage() {

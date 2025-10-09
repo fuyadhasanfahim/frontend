@@ -7,27 +7,19 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { data } from '@/data/sidebar';
 import { cn } from '@/lib/utils';
-import { Icon } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export function NavMain({
-    items,
-}: {
-    items: {
-        title: string;
-        url: string;
-        icon?: Icon;
-    }[];
-}) {
+export function NavMain() {
     const pathname = usePathname();
 
     return (
-        <SidebarGroup className='px-4'>
+        <SidebarGroup className="px-4">
             <SidebarGroupContent className="flex flex-col gap-2">
                 <SidebarMenu className="space-y-1">
-                    {items.map((item) => (
+                    {data.map((item) => (
                         <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton
                                 tooltip={item.title}

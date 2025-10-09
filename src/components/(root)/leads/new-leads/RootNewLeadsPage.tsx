@@ -6,6 +6,7 @@ import React, {
     useCallback,
     useRef,
     useEffect,
+    memo,
 } from 'react';
 import debounce from 'lodash.debounce';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ const CORE_COLUMNS = [
     { key: 'notes', label: 'Notes', width: 200 },
 ] as const;
 
-const TagsInput = React.memo(function TagsInput({
+const TagsInput = memo(function TagsInput({
     value,
     onChange,
     placeholder,
@@ -168,7 +169,7 @@ const TagsCell = React.memo(function TagsCell({
 
 export default function RootNewLeadsPage() {
     const [rows, setRows] = useState<LeadRow[]>(() =>
-        Array.from({ length: 100 }, (_, idx) => ({
+        Array.from({ length: 100 }, (_) => ({
             rowId: uuid(),
             companyName: '',
             websiteUrl: '',

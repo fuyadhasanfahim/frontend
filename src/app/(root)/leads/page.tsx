@@ -4,8 +4,9 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: 'Leads | Job Portal',
+    description: 'This is the leads page',
 };
 
-export default function page() {
+export default function LeadsPage() {
     return <RootLeadsPage />;
 }
