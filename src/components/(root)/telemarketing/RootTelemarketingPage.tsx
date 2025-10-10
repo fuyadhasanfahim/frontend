@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
-import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
+import React from 'react';
+import { useGetAssignmentsQuery } from '@/redux/features/lead/leadApi';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
     Table,
@@ -12,183 +11,87 @@ import {
     TableHead,
     TableCell,
 } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
-import {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import {
-    Select,
-    SelectTrigger,
-    SelectContent,
-    SelectItem,
-    SelectValue,
-} from '@/components/ui/select';
-import { IUser } from '@/types/user.interface';
+import { Spinner } from '@/components/ui/spinner';
 import { ILead } from '@/types/lead.interface';
+import { ILeadAssignment } from '@/types/lead-assignment.interface';
+import { useSignedUser } from '@/hooks/useSignedUser';
+import Link from 'next/link';
 
-export default function UserLeadsPage() {
-    const [selectedUser, setSelectedUser] = useState<string | undefined>(
-        undefined
-    );
-    const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-    const [deadline, setDeadline] = useState<Date | undefined>(undefined);
+export default function RootTelemarketingPage() {
+    const { user } = useSignedUser();
 
-    const { data: usersData, isLoading: usersLoading } = useGetAllUsersQuery(
-        {}
-    );
-    const { data: leadsData, isLoading: leadsLoading } = useGetLeadsQuery({
-        page: 1,
-        limit: 20,
-    });
-
-    const toggleLead = (id: string) => {
-        setSelectedLeads((prev) =>
-            prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]
-        );
-    };
-
-    const handleCreateTask = () => {
-        if (!selectedUser || selectedLeads.length === 0 || !deadline) {
-            alert('Please select telemarketer, leads, and deadline');
-            return;
+    const { data, isLoading, isError } = useGetAssignmentsQuery(
+        user?._id as string,
+        {
+            skip: !user?._id,
         }
-    };
+    );
+
+    if (isLoading) return <Spinner />;
+    if (isError)
+        return <p className="text-red-500">Failed to load assignments</p>;
+
+    const assignments: ILeadAssignment[] = data?.data || [];
 
     return (
-        <div className="p-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Create Lead Assignment</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {/* Telemarketer Select */}
-                    <div>
-                        <h3 className="mb-2 text-sm font-medium">
-                            Assign Telemarketer
-                        </h3>
-                        {usersLoading ? (
-                            <p>Loading users...</p>
-                        ) : (
-                            <Select onValueChange={setSelectedUser}>
-                                <SelectTrigger className="w-[240px]">
-                                    <SelectValue placeholder="Select a telemarketer" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {usersData?.users.map((u: IUser) => (
-                                        <SelectItem key={u._id} value={u._id}>
-                                            {u.firstName} {u.lastName} ({u.role}
-                                            )
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    </div>
-
-                    {/* Deadline Picker */}
-                    <div>
-                        <h3 className="mb-2 text-sm font-medium">
-                            Set Deadline
-                        </h3>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className="w-[240px] justify-start text-left font-normal"
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {deadline ? (
-                                        format(deadline, 'PPP')
-                                    ) : (
-                                        <span>Pick deadline</span>
-                                    )}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                    mode="single"
-                                    selected={deadline}
-                                    onSelect={setDeadline}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    {/* Leads Table */}
-                    <div>
-                        <h3 className="mb-2 text-sm font-medium">
-                            Select Leads
-                        </h3>
-                        {leadsLoading ? (
-                            <p>Loading leads...</p>
-                        ) : (
-                            <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Assign</TableHead>
-                                            <TableHead>Company</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Phone</TableHead>
-                                            <TableHead>Status</TableHead>
+        <Card>
+            <CardHeader>
+                <CardTitle>My Assigned Leads</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {assignments.length === 0 ? (
+                    <p>No assignments found.</p>
+                ) : (
+                    assignments.map((assignment) => (
+                        <div key={assignment._id} className="mb-6">
+                            <h3 className="font-semibold mb-2">
+                                Assignment: {assignment._id} | Status:{' '}
+                                {assignment.status} | Target:{' '}
+                                {assignment.totalTarget ?? '—'} | Deadline:{' '}
+                                {assignment.deadline
+                                    ? new Date(
+                                          assignment.deadline
+                                      ).toLocaleDateString()
+                                    : '—'}
+                            </h3>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Company</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Details</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {assignment.leads.map((lead: ILead) => (
+                                        <TableRow key={lead._id}>
+                                            <TableCell>
+                                                {lead.companyName}
+                                            </TableCell>
+                                            <TableCell>
+                                                {lead.emails?.join(', ')}
+                                            </TableCell>
+                                            <TableCell>
+                                                {lead.phones?.join(', ')}
+                                            </TableCell>
+                                            <TableCell>{lead.status}</TableCell>
+                                            <TableCell className="max-w-xs truncate underline">
+                                                <Link
+                                                    href={`telemarketing/leads/${lead._id}`}
+                                                >
+                                                    View
+                                                </Link>
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {leadsData?.data?.map((lead: ILead) => (
-                                            <TableRow key={lead._id}>
-                                                <TableCell>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedLeads.includes(
-                                                            lead._id
-                                                        )}
-                                                        onChange={() =>
-                                                            toggleLead(lead._id)
-                                                        }
-                                                    />
-                                                </TableCell>
-                                                <TableCell>
-                                                    {lead.companyName}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {lead.emails?.join(', ')}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {lead.phones?.join(', ')}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {lead.status}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Submit Button */}
-                    <div className="flex justify-end">
-                        <Button
-                            className="bg-blue-600 text-white"
-                            onClick={handleCreateTask}
-                            disabled={
-                                !selectedUser ||
-                                selectedLeads.length === 0 ||
-                                !deadline
-                            }
-                        >
-                            Create Assignment
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ))
+                )}
+            </CardContent>
+        </Card>
     );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
-import RootTelemarketingPage from '@/components/(root)/telemarketing/RootTelemarketingPage';
+import RootAssignTelemarketerPage from '@/components/(root)/leads/assign-telemarketer/RootAssignTelemarketerPage';
 
 export const metadata: Metadata = {
     title: 'Assign Telemarketer | Job Portal',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AssignTelemarketerPage() {
-    return <RootTelemarketingPage />;
+    return <RootAssignTelemarketerPage />;
 }

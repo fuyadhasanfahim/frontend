@@ -1,8 +1,10 @@
+import { ILead } from './lead.interface';
+
 export interface ILeadAssignment {
     _id: string;
     telemarketer: string;
     assignedBy: string;
-    leads: string[];
+    leads: ILead[];
     totalTarget?: number;
     deadline?: Date;
     createdAt: Date;
