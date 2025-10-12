@@ -32,6 +32,8 @@ import {
 } from '@/redux/features/country/countryApi';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '../ui/label';
 
 type CountrySelectProps = {
     value: string | null;
@@ -48,18 +50,15 @@ export function CountrySelect({
     const [dialogOpen, setDialogOpen] = React.useState(false);
     const [newCountry, setNewCountry] = React.useState('');
 
-    // 👉 API hooks
+    // API hooks
     const { data: countries, isLoading, refetch } = useGetCountriesQuery({});
     const [addCountry, { isLoading: adding }] = useAddCountryMutation();
 
-    // 👉 track trigger width
     const triggerRef = React.useRef<HTMLButtonElement>(null);
     const [triggerWidth, setTriggerWidth] = React.useState<number>();
 
     React.useEffect(() => {
-        if (triggerRef.current) {
-            setTriggerWidth(triggerRef.current.offsetWidth);
-        }
+        if (triggerRef.current) setTriggerWidth(triggerRef.current.offsetWidth);
     }, [open]);
 
     const handleAddCountry = async () => {
@@ -76,9 +75,10 @@ export function CountrySelect({
     };
 
     return (
-        <div className={cn('flex items-center gap-2 w-auto', className)}>
+        <div className={cn('flex items-center gap-2', className)}>
+            {/* Main Selector */}
             {isLoading ? (
-                <Spinner />
+                <Skeleton className="h-10 w-48 rounded-md" />
             ) : (
                 <Popover open={open} onOpenChange={setOpen}>
                     <PopoverTrigger asChild>
@@ -87,14 +87,14 @@ export function CountrySelect({
                             variant="outline"
                             role="combobox"
                             aria-expanded={open}
-                            className="flex-1 justify-between capitalize"
+                            className="flex-1 justify-between capitalize rounded-md border-gray-300 hover:border-gray-400 transition"
                         >
-                            {value ? value : 'Select country...'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            {value || 'Select country...'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                        className="p-0"
+                        className="p-0 rounded-md shadow-md border border-gray-200"
                         style={{ width: triggerWidth }}
                     >
                         <Command>
@@ -105,8 +105,8 @@ export function CountrySelect({
                                     {countries?.map(
                                         (c: { _id: string; name: string }) => (
                                             <CommandItem
-                                                className="capitalize"
                                                 key={c._id}
+                                                className="capitalize"
                                                 value={c.name}
                                                 onSelect={(currentValue) => {
                                                     onChange(currentValue);
@@ -115,7 +115,7 @@ export function CountrySelect({
                                             >
                                                 <Check
                                                     className={cn(
-                                                        'mr-2 h-4 w-4',
+                                                        'mr-2 h-4 w-4 text-primary transition-opacity',
                                                         value === c.name
                                                             ? 'opacity-100'
                                                             : 'opacity-0'
@@ -135,24 +135,40 @@ export function CountrySelect({
             {/* Add Country Dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-md border-gray-300 hover:bg-accent hover:text-accent-foreground transition"
+                        title="Add Country"
+                    >
                         <Plus className="h-4 w-4" />
                     </Button>
                 </DialogTrigger>
-                <DialogContent>
+
+                <DialogContent className="sm:max-w-md rounded-xl shadow-lg">
                     <DialogHeader>
-                        <DialogTitle>Add New Country</DialogTitle>
+                        <DialogTitle className="text-lg font-semibold">
+                            Add New Country
+                        </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+
+                    <div className="space-y-4 pt-2">
+                        <Label htmlFor="country-name">Country Name</Label>
                         <Input
+                            id="country-name"
                             placeholder="Enter country name"
                             value={newCountry}
                             onChange={(e) => setNewCountry(e.target.value)}
                         />
                     </div>
+
                     <DialogFooter>
-                        <Button onClick={handleAddCountry} disabled={adding}>
-                            {adding ? 'Saving...' : 'Save'}
+                        <Button
+                            onClick={handleAddCountry}
+                            disabled={adding || !newCountry.trim()}
+                            className="w-auto"
+                        >
+                            {adding ? <Spinner /> : 'Save'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

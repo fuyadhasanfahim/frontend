@@ -1,5 +1,4 @@
 import { apiSlice } from '@/redux/api/apiSlice';
-import { ILead } from '@/types/lead.interface';
 
 export const leadApi = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
@@ -9,6 +8,7 @@ export const leadApi = apiSlice.injectEndpoints({
                 method: 'POST',
                 body: formData,
             }),
+            invalidatesTags: ['Leads'],
         }),
         getLeads: builder.query({
             query: ({
@@ -32,30 +32,14 @@ export const leadApi = apiSlice.injectEndpoints({
                     country,
                 },
             }),
+            providesTags: ['Leads'],
         }),
         getLeadById: builder.query({
             query: (id: string) => ({
                 url: `/leads/get-lead/${id}`,
                 method: 'GET',
             }),
-            transformResponse: (response: { success: boolean; lead: ILead }) =>
-                response.lead,
-        }),
-        updateLeadByTelemarketer: builder.mutation({
-            query: ({
-                leadId,
-                status,
-                note,
-            }: {
-                leadId: string;
-                status?: string;
-                note?: string;
-            }) => ({
-                url: `/leads/${leadId}/status`,
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: { status, note },
-            }),
+            providesTags: ['Leads'],
         }),
         newLead: builder.mutation({
             query: (body) => ({
@@ -64,28 +48,15 @@ export const leadApi = apiSlice.injectEndpoints({
                 headers: { 'Content-Type': 'application/json' },
                 body,
             }),
+            invalidatesTags: ['Leads'],
         }),
-        updateLeadStatus: builder.mutation({
-            query: (body) => ({
-                url: '/leads/new-lead',
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+        updateLead: builder.mutation({
+            query: ({ id, body }) => ({
+                url: `/leads/update-lead/${id}`,
+                method: 'PUT',
                 body,
             }),
-        }),
-        assignTelemarketer: builder.mutation({
-            query: (body) => ({
-                url: '/leads/assign-telemarketer',
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body,
-            }),
-        }),
-        getAssignments: builder.query({
-            query: (userId: string) => ({
-                url: `/leads/assignments/${userId}`,
-                method: 'GET',
-            }),
+            invalidatesTags: ['Leads'],
         }),
     }),
 });
@@ -95,8 +66,5 @@ export const {
     useGetLeadByIdQuery,
     useImportLeadsMutation,
     useNewLeadMutation,
-    useAssignTelemarketerMutation,
-    useGetAssignmentsQuery,
-    useUpdateLeadStatusMutation,
-    useUpdateLeadByTelemarketerMutation,
+    useUpdateLeadMutation,
 } = leadApi;

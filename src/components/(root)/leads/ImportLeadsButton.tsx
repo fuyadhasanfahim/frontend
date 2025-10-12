@@ -141,7 +141,7 @@ export default function ImportLeadsButton() {
             }}
         >
             <DialogTrigger asChild>
-                <Button>
+                <Button size={'sm'}>
                     <IconFileTypeXls />
                     Import Leads
                 </Button>
