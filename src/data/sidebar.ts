@@ -14,13 +14,13 @@ export const data = [
     {
         title: 'Leads',
         url: '/leads',
-        access: ['admin', 'user', 'lead-generator'],
+        access: ['admin', 'lead-generator', 'telemarketer'],
         icon: IconFileTypeXls,
     },
     {
-        title: 'Telemarketing',
-        url: '/telemarketing',
-        access: ['admin', 'user', 'telemarketer'],
+        title: 'Tasks',
+        url: '/tasks',
+        access: ['admin', 'lead-generator', 'telemarketer'],
         icon: IconAd2,
     },
 ];
