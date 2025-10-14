@@ -18,19 +18,41 @@ import { formatDistanceToNow } from 'date-fns';
 import { ITask } from '@/types/task.interface';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import {
+    Card,
+    CardContent,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 
 export default function RootTaskPage() {
     const [page, setPage] = useState(1);
+    const limit = 20;
 
-    const { data, isLoading } = useGetTasksQuery({ page, limit: 20 });
-    const tasks = data?.tasks ?? [];
-    const pagination = data?.pagination ?? { totalItems: 0, totalPages: 1 };
+    const { data, isLoading } = useGetTasksQuery({ page, limit });
+
+    const tasks = data?.data ?? [];
+    const pagination = data?.pagination ?? {
+        totalItems: 0,
+        totalPages: 1,
+        currentPage: 1,
+        limit,
+    };
+
+    const start = (pagination.currentPage - 1) * pagination.limit + 1;
+    const end = Math.min(
+        pagination.currentPage * pagination.limit,
+        pagination.totalItems
+    );
 
     return (
-        <div className="p-6 space-y-6 rounded-lg border bg-white">
-            <h2 className="text-xl font-semibold">My Tasks</h2>
+        <Card>
+            <CardHeader>
+                <CardTitle>My Tasks</CardTitle>
+            </CardHeader>
 
-            <div className="overflow-x-auto">
+            <CardContent className="overflow-x-auto">
                 <Table>
                     <TableHeader className="bg-accent">
                         <TableRow>
@@ -46,13 +68,15 @@ export default function RootTaskPage() {
                             </TableHead>
                             <TableHead className="border">Created</TableHead>
                             <TableHead className="border">Finished</TableHead>
-                            <TableHead className="border">Action</TableHead>
+                            <TableHead className="border text-center">
+                                Action
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
 
                     <TableBody>
                         {isLoading ? (
-                            Array.from({ length: 20 }).map((_, i) => (
+                            Array.from({ length: 10 }).map((_, i) => (
                                 <TableRow key={i}>
                                     {Array.from({ length: 8 }).map((__, j) => (
                                         <TableCell key={j} className="border">
@@ -124,10 +148,10 @@ export default function RootTaskPage() {
                                               )
                                             : '—'}
                                     </TableCell>
-                                    <TableCell className="border text-sm text-muted-foreground text-center">
+                                    <TableCell className="border text-center">
                                         <Link
-                                            href={`tasks/details/${task._id}`}
-                                            className="underline"
+                                            href={`/tasks/details/${task._id}`}
+                                            className="underline text-sm"
                                         >
                                             View
                                         </Link>
@@ -137,7 +161,7 @@ export default function RootTaskPage() {
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={8}
+                                    colSpan={9}
                                     className="text-center py-12 text-gray-500 border"
                                 >
                                     No tasks found
@@ -146,19 +170,13 @@ export default function RootTaskPage() {
                         )}
                     </TableBody>
                 </Table>
-            </div>
+            </CardContent>
 
-            {/* Pagination */}
-            <div className="flex justify-between items-center pt-4">
+            <CardFooter className="flex justify-between items-center pt-4">
                 <div className="text-sm text-gray-600">
                     Showing{' '}
-                    <span className="font-medium text-gray-900">
-                        {(page - 1) * 20 + 1}
-                    </span>{' '}
-                    to{' '}
-                    <span className="font-medium text-gray-900">
-                        {Math.min(page * 20, pagination.totalItems)}
-                    </span>{' '}
+                    <span className="font-medium text-gray-900">{start}</span>{' '}
+                    to <span className="font-medium text-gray-900">{end}</span>{' '}
                     of{' '}
                     <span className="font-medium text-gray-900">
                         {pagination.totalItems}
@@ -170,8 +188,8 @@ export default function RootTaskPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        disabled={page === 1}
-                        onClick={() => setPage((p) => p - 1)}
+                        disabled={pagination.currentPage === 1}
+                        onClick={() => setPage((p) => Math.max(p - 1, 1))}
                         className="gap-1"
                     >
                         <ChevronLeft className="h-4 w-4" />
@@ -180,15 +198,22 @@ export default function RootTaskPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        disabled={page === pagination.totalPages}
-                        onClick={() => setPage((p) => p + 1)}
+                        disabled={
+                            pagination.currentPage === pagination.totalPages ||
+                            pagination.totalPages === 0
+                        }
+                        onClick={() =>
+                            setPage((p) =>
+                                Math.min(p + 1, pagination.totalPages || p + 1)
+                            )
+                        }
                         className="gap-1"
                     >
                         Next
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
-            </div>
-        </div>
+            </CardFooter>
+        </Card>
     );
 }

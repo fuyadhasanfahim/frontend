@@ -33,6 +33,7 @@ import { useGetCountriesQuery } from '@/redux/features/country/countryApi';
 import Link from 'next/link';
 import { IconEdit, IconInfoCircle } from '@tabler/icons-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 type SortOption =
     | 'companyAsc'
@@ -268,11 +269,12 @@ export default function LeadsTable() {
                                         <TableHead className="border">
                                             Status
                                         </TableHead>
-                                        <TableHead className="border">
+                                        <TableHead className="border text-center">
                                             Actions
                                         </TableHead>
                                     </TableRow>
                                 </TableHeader>
+
                                 <TableBody>
                                     {isLoading ? (
                                         Array.from({ length: perPage }).map(
@@ -311,64 +313,136 @@ export default function LeadsTable() {
                                                 ]
                                                     .filter(Boolean)
                                                     .join(' ') || 'N/A';
+
                                             return (
                                                 <TableRow key={lead._id}>
-                                                    <TableCell className="border">
+                                                    {/* Company */}
+                                                    <TableCell className="border font-medium">
                                                         {lead.company.name}
                                                     </TableCell>
-                                                    <TableCell className="border">
-                                                        {
+
+                                                    {/* Website */}
+                                                    <TableCell className="border text-blue-600 underline">
+                                                        {lead.company
+                                                            .website ? (
                                                             <Link
                                                                 href={
-                                                                    lead.company
-                                                                        .website
+                                                                    lead.company.website.startsWith(
+                                                                        'http'
+                                                                    )
+                                                                        ? lead
+                                                                              .company
+                                                                              .website
+                                                                        : `https://${lead.company.website}`
                                                                 }
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-blue-400 hover:underline"
+                                                                className="hover:text-blue-700"
                                                             >
                                                                 {
                                                                     lead.company
                                                                         .website
                                                                 }
                                                             </Link>
-                                                        }
+                                                        ) : (
+                                                            'N/A'
+                                                        )}
                                                     </TableCell>
+
+                                                    {/* Full Name */}
                                                     <TableCell className="border">
                                                         {fullName}
                                                     </TableCell>
-                                                    <TableCell className="border truncate max-w-62">
-                                                        {lead.contactPersons
-                                                            .flatMap(
-                                                                (cp) =>
-                                                                    cp.emails
-                                                            )
-                                                            .join(', ')}
+
+                                                    {/* Emails */}
+                                                    <TableCell className="border text-xs truncate max-w-64">
+                                                        <div className="space-y-1">
+                                                            {lead.company.emails?.map(
+                                                                (email, i) => (
+                                                                    <p
+                                                                        key={`co-email-${lead._id}-${i}`}
+                                                                    >
+                                                                        {email}
+                                                                    </p>
+                                                                )
+                                                            )}
+                                                            {lead.contactPersons?.flatMap(
+                                                                (cp, ci) =>
+                                                                    cp.emails?.map(
+                                                                        (
+                                                                            email,
+                                                                            ei
+                                                                        ) => (
+                                                                            <p
+                                                                                key={`cp-email-${lead._id}-${ci}-${ei}`}
+                                                                            >
+                                                                                {
+                                                                                    email
+                                                                                }
+                                                                            </p>
+                                                                        )
+                                                                    )
+                                                            )}
+                                                        </div>
                                                     </TableCell>
-                                                    <TableCell className="border truncate max-w-62">
-                                                        {lead.contactPersons
-                                                            .flatMap(
-                                                                (cp) =>
-                                                                    cp.phones
-                                                            )
-                                                            .join(', ')}
+
+                                                    {/* Phones */}
+                                                    <TableCell className="border text-xs truncate max-w-64">
+                                                        <div className="space-y-1">
+                                                            {lead.company.phones?.map(
+                                                                (phone, i) => (
+                                                                    <p
+                                                                        key={`co-phone-${lead._id}-${i}`}
+                                                                    >
+                                                                        {phone}
+                                                                    </p>
+                                                                )
+                                                            )}
+                                                            {lead.contactPersons?.flatMap(
+                                                                (cp, ci) =>
+                                                                    cp.phones?.map(
+                                                                        (
+                                                                            phone,
+                                                                            pi
+                                                                        ) => (
+                                                                            <p
+                                                                                key={`cp-phone-${lead._id}-${ci}-${pi}`}
+                                                                            >
+                                                                                {
+                                                                                    phone
+                                                                                }
+                                                                            </p>
+                                                                        )
+                                                                    )
+                                                            )}
+                                                        </div>
                                                     </TableCell>
+
+                                                    {/* Designation */}
                                                     <TableCell className="border">
                                                         {contact?.designation ||
                                                             'N/A'}
                                                     </TableCell>
+
+                                                    {/* Address */}
                                                     <TableCell className="border capitalize">
                                                         {lead.address || 'N/A'}
                                                     </TableCell>
+
+                                                    {/* Country */}
                                                     <TableCell className="border capitalize">
-                                                        {lead.country}
+                                                        {lead.country || 'N/A'}
                                                     </TableCell>
-                                                    <TableCell className="border text-center capitalize">
+
+                                                    {/* Status */}
+                                                    <TableCell className="border capitalize">
                                                         {lead.status.replace(
-                                                            '_',
-                                                            ' '
-                                                        )}
+                                                                '_',
+                                                                ' '
+                                                            )}
                                                     </TableCell>
+
+                                                    {/* Actions */}
                                                     <TableCell className="border text-center">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger
@@ -381,14 +455,17 @@ export default function LeadsTable() {
                                                                     <Ellipsis className="h-5 w-5 text-gray-600" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
+                                                            <DropdownMenuContent
+                                                                align="end"
+                                                                className="w-36"
+                                                            >
                                                                 <DropdownMenuItem
                                                                     asChild
                                                                 >
                                                                     <Link
                                                                         href={`/leads/details/${lead._id}`}
                                                                     >
-                                                                        <IconInfoCircle />
+                                                                        <IconInfoCircle className="mr-2 h-4 w-4" />
                                                                         Details
                                                                     </Link>
                                                                 </DropdownMenuItem>
@@ -398,7 +475,7 @@ export default function LeadsTable() {
                                                                     <Link
                                                                         href={`/leads/edit/${lead._id}`}
                                                                     >
-                                                                        <IconEdit />
+                                                                        <IconEdit className="mr-2 h-4 w-4" />
                                                                         Edit
                                                                     </Link>
                                                                 </DropdownMenuItem>
@@ -411,7 +488,7 @@ export default function LeadsTable() {
                                     ) : (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={9}
+                                                colSpan={10}
                                                 className="text-center py-12 text-gray-500 border"
                                             >
                                                 No leads found

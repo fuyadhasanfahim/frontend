@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -23,14 +22,26 @@ import { Spinner } from '@/components/ui/spinner';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useGetCountriesQuery } from '@/redux/features/country/countryApi';
 import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
 import { useCreateTaskMutation } from '@/redux/features/task/taskApi';
 import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
 import { useSignedUser } from '@/hooks/useSignedUser';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ILead } from '@/types/lead.interface';
 import { toast } from 'sonner';
+
+// ---------- Types ----------
+interface IUser {
+    _id: string;
+    firstName: string;
+    lastName?: string;
+    email?: string;
+    role: string;
+    image?: string;
+}
+
+type SortOption = 'companyAsc' | 'companyDesc' | 'countryAsc' | 'countryDesc';
 
 const ROLES = [
     'lead-generator',
@@ -43,20 +54,23 @@ const ROLES = [
     'graphic-designer',
 ] as const;
 
-type SortOption = 'companyAsc' | 'companyDesc' | 'countryAsc' | 'countryDesc';
-
 export default function RootLeadCreateTaskPage() {
     const { user, isLoading: userLoading } = useSignedUser();
-    const [selectedRole, setSelectedRole] = useState<string>('');
-    const [selectedUser, setSelectedUser] = useState<string>('');
+
+    const [selectedRole, setSelectedRole] = useState('');
+    const [selectedUser, setSelectedUser] = useState('');
     const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
-    const [countryFilter, setCountryFilter] = useState<string>('all');
+    const [countryFilter, setCountryFilter] = useState('all');
     const [sort, setSort] = useState<SortOption>('companyAsc');
 
     const { data: countries } = useGetCountriesQuery({});
-    const { data: usersData } = useGetAllUsersQuery(undefined);
+    const {
+        data: usersData,
+        isLoading: usersLoading,
+        isFetching: usersFetching,
+    } = useGetAllUsersQuery(undefined);
 
     const { data, isLoading: leadsLoading } = useGetLeadsQuery({
         page,
@@ -67,9 +81,10 @@ export default function RootLeadCreateTaskPage() {
         status: 'new',
     });
 
+    console.log(data);
+
     const leads = data?.data ?? [];
     const pagination = data?.pagination ?? { totalItems: 0, totalPages: 1 };
-
     const [createTask, { isLoading: creating }] = useCreateTaskMutation();
 
     const handleSelectAll = (checked: boolean) => {
@@ -100,17 +115,20 @@ export default function RootLeadCreateTaskPage() {
 
             toast.success(res.message || 'Task created successfully!');
             setSelectedLeads([]);
-        } catch (err: any) {
-            toast.error(err?.data?.message || 'Failed to create task');
+        } catch (err) {
+            const message =
+                (err as { data?: { message?: string } })?.data?.message ??
+                'Failed to create task';
+            toast.error(message);
         }
     };
 
-    const filteredUsers = useMemo(() => {
+    const filteredUsers: IUser[] = useMemo(() => {
         if (!usersData?.users) return [];
         if (!selectedRole)
-            return usersData.users.filter((u: any) => u._id !== user?._id);
+            return usersData.users.filter((u: IUser) => u._id !== user?._id);
         return usersData.users.filter(
-            (u: any) => u.role === selectedRole && u._id !== user?._id
+            (u: IUser) => u.role === selectedRole && u._id !== user?._id
         );
     }, [usersData, selectedRole, user?._id]);
 
@@ -122,28 +140,27 @@ export default function RootLeadCreateTaskPage() {
         );
     }
 
+    // ---------- UI ----------
     return (
         <div className="p-6 space-y-6 rounded-lg border bg-card">
             <h2 className="text-xl font-semibold">
                 Create Lead Generation Task
             </h2>
 
-            {/* Inline Filters */}
+            {/* Filters */}
             <div className="grid grid-cols-5 items-center gap-6">
+                {/* Role */}
                 <div className="grid gap-2">
                     <Label htmlFor="role-select">Select Role</Label>
                     <Select
                         onValueChange={setSelectedRole}
-                        value={selectedRole}
+                        value={selectedRole || 'all'}
                     >
                         <SelectTrigger
                             id="role-select"
                             className="w-full capitalize"
                         >
-                            <SelectValue
-                                placeholder="Select role..."
-                                className=""
-                            />
+                            <SelectValue placeholder="Select role..." />
                         </SelectTrigger>
                         <SelectContent className="capitalize">
                             <SelectItem value="all">All Roles</SelectItem>
@@ -156,27 +173,50 @@ export default function RootLeadCreateTaskPage() {
                     </Select>
                 </div>
 
-                {/* User (always visible) */}
+                {/* User */}
                 <div className="grid gap-2">
                     <Label htmlFor="user-select">Select User</Label>
                     <Select
                         onValueChange={setSelectedUser}
                         value={selectedUser}
+                        disabled={usersLoading || usersFetching}
                     >
                         <SelectTrigger id="user-select" className="w-full">
                             <SelectValue placeholder="Select user..." />
                         </SelectTrigger>
+
                         <SelectContent>
-                            {filteredUsers.length > 0 ? (
-                                filteredUsers.map((u: any) => (
-                                    <SelectItem key={u._id} value={u._id}>
+                            {usersLoading || usersFetching ? (
+                                <div className="space-y-2 p-2">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Skeleton className="h-6 w-6 rounded-full" />
+                                            <div className="space-y-1">
+                                                <Skeleton className="h-3 w-32" />
+                                                <Skeleton className="h-2 w-20" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : filteredUsers.length > 0 ? (
+                                filteredUsers.map((u) => (
+                                    <SelectItem
+                                        key={u._id}
+                                        value={
+                                            u._id ||
+                                            `user-${Math.random()
+                                                .toString(36)
+                                                .slice(2)}`
+                                        }
+                                    >
                                         <div className="flex items-center gap-2">
                                             <Avatar className="h-6 w-6">
                                                 <AvatarImage
                                                     src={u.image || ''}
-                                                    alt={
-                                                        u.name || 'User avatar'
-                                                    }
+                                                    alt={u.firstName || 'User'}
                                                 />
                                                 <AvatarFallback>
                                                     {u.firstName?.[0]?.toUpperCase() ||
@@ -211,19 +251,12 @@ export default function RootLeadCreateTaskPage() {
                         onValueChange={setCountryFilter}
                     >
                         <SelectTrigger id="country-select" className="w-full">
-                            <SelectValue
-                                placeholder="Country"
-                                className="capitalize"
-                            />
+                            <SelectValue placeholder="Country" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Countries</SelectItem>
-                            {countries?.map((c, i) => (
-                                <SelectItem
-                                    key={i}
-                                    value={c.name}
-                                    className="capitalize"
-                                >
+                            {countries?.map((c) => (
+                                <SelectItem key={c.name} value={c.name}>
                                     {c.name}
                                 </SelectItem>
                             ))}
@@ -296,35 +329,31 @@ export default function RootLeadCreateTaskPage() {
                             />
                         </TableHead>
                         <TableHead className="border">Company</TableHead>
-                        <TableHead className="border">Website</TableHead>
+                        <TableHead className="border">Contact Person</TableHead>
+                        <TableHead className="border">Emails</TableHead>
+                        <TableHead className="border">Phones</TableHead>
+                        <TableHead className="border">Designation</TableHead>
+                        <TableHead className="border">Address</TableHead>
                         <TableHead className="border">Country</TableHead>
                         <TableHead className="border">Status</TableHead>
                     </TableRow>
                 </TableHeader>
+
                 <TableBody>
                     {leadsLoading ? (
                         Array.from({ length: perPage }).map((_, i) => (
                             <TableRow key={i}>
-                                <TableCell className="border">
-                                    <Skeleton className="h-4 w-4 mx-auto" />
-                                </TableCell>
-                                <TableCell className="border">
-                                    <Skeleton className="h-4 w-32" />
-                                </TableCell>
-                                <TableCell className="border">
-                                    <Skeleton className="h-4 w-24" />
-                                </TableCell>
-                                <TableCell className="border">
-                                    <Skeleton className="h-4 w-20" />
-                                </TableCell>
-                                <TableCell className="border">
-                                    <Skeleton className="h-4 w-16" />
-                                </TableCell>
+                                {Array.from({ length: 9 }).map((__, j) => (
+                                    <TableCell key={j} className="border">
+                                        <Skeleton className="h-4 w-24 mx-auto" />
+                                    </TableCell>
+                                ))}
                             </TableRow>
                         ))
                     ) : leads.length ? (
                         leads.map((lead: ILead) => (
                             <TableRow key={lead._id}>
+                                {/* Checkbox */}
                                 <TableCell className="text-center border">
                                     <Checkbox
                                         checked={selectedLeads.includes(
@@ -336,15 +365,134 @@ export default function RootLeadCreateTaskPage() {
                                         aria-label={`Select ${lead.company.name}`}
                                     />
                                 </TableCell>
-                                <TableCell className="font-medium border">
-                                    {lead.company.name}
+
+                                {/* Company */}
+                                <TableCell className="border">
+                                    <div>
+                                        <p className="font-medium">
+                                            {lead.company.name}
+                                        </p>
+                                        {lead.company.website && (
+                                            <a
+                                                href={
+                                                    lead.company.website.startsWith(
+                                                        'http'
+                                                    )
+                                                        ? lead.company.website
+                                                        : `https://${lead.company.website}`
+                                                }
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-xs text-blue-600 underline break-all"
+                                            >
+                                                {lead.company.website}
+                                            </a>
+                                        )}
+                                    </div>
                                 </TableCell>
-                                <TableCell className="text-muted-foreground border">
-                                    {lead.company.website}
+
+                                {/* Contact Person */}
+                                <TableCell className="border">
+                                    {lead.contactPersons?.length ? (
+                                        <div className="space-y-1 text-sm">
+                                            {lead.contactPersons.map(
+                                                (cp, i) => (
+                                                    <div
+                                                        key={`cp-${lead._id}-${i}`}
+                                                    >
+                                                        <p className="font-medium">
+                                                            {cp.firstName}{' '}
+                                                            {cp.lastName || ''}
+                                                        </p>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    ) : (
+                                        '-'
+                                    )}
                                 </TableCell>
-                                <TableCell className="capitalize border">
-                                    {lead.country}
+
+                                {/* Emails */}
+                                <TableCell className="border text-xs">
+                                    <div className="space-y-1">
+                                        {lead.company.emails?.map(
+                                            (email, i) => (
+                                                <p
+                                                    key={`co-email-${lead._id}-${i}`}
+                                                >
+                                                    {email}
+                                                </p>
+                                            )
+                                        )}
+                                        {lead.contactPersons?.flatMap(
+                                            (cp, ci) =>
+                                                cp.emails?.map((email, ei) => (
+                                                    <p
+                                                        key={`cp-email-${lead._id}-${ci}-${ei}`}
+                                                    >
+                                                        {email}
+                                                    </p>
+                                                ))
+                                        )}
+                                    </div>
                                 </TableCell>
+
+                                {/* Phones */}
+                                <TableCell className="border text-xs">
+                                    <div className="space-y-1">
+                                        {lead.company.phones?.map(
+                                            (phone, i) => (
+                                                <p
+                                                    key={`co-phone-${lead._id}-${i}`}
+                                                >
+                                                    {phone}
+                                                </p>
+                                            )
+                                        )}
+                                        {lead.contactPersons?.flatMap(
+                                            (cp, ci) =>
+                                                cp.phones?.map((phone, pi) => (
+                                                    <p
+                                                        key={`cp-phone-${lead._id}-${ci}-${pi}`}
+                                                    >
+                                                        {phone}
+                                                    </p>
+                                                ))
+                                        )}
+                                    </div>
+                                </TableCell>
+
+                                {/* Designation */}
+                                <TableCell className="border">
+                                    {lead.contactPersons?.length ? (
+                                        <div className="space-y-1 text-sm">
+                                            {lead.contactPersons.map(
+                                                (cp, i) => (
+                                                    <p
+                                                        key={`cp-des-${lead._id}-${i}`}
+                                                    >
+                                                        {cp.designation || '-'}
+                                                    </p>
+                                                )
+                                            )}
+                                        </div>
+                                    ) : (
+                                        '-'
+                                    )}
+                                </TableCell>
+
+                                {/* Address */}
+                                <TableCell className="border">
+                                    {lead.address || '-'}
+                                </TableCell>
+
+                                {/* Country */}
+                                <TableCell className="border capitalize">
+                                    {lead.country || '-'}
+                                </TableCell>
+
+                                {/* Status */}
                                 <TableCell className="border">
                                     <span className="capitalize px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
                                         {lead.status}
@@ -355,8 +503,8 @@ export default function RootLeadCreateTaskPage() {
                     ) : (
                         <TableRow>
                             <TableCell
-                                colSpan={5}
-                                className="text-center py-12 text-muted-foreground"
+                                colSpan={9}
+                                className="text-center py-12 text-muted-foreground border"
                             >
                                 No new leads found
                             </TableCell>
@@ -368,20 +516,30 @@ export default function RootLeadCreateTaskPage() {
             {/* Pagination */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
                 <div className="text-sm text-muted-foreground">
-                    Showing{' '}
-                    <span className="font-medium text-foreground">
-                        {(page - 1) * perPage + 1}
-                    </span>{' '}
-                    to{' '}
-                    <span className="font-medium text-foreground">
-                        {Math.min(page * perPage, pagination.totalItems)}
-                    </span>{' '}
-                    of{' '}
-                    <span className="font-medium text-foreground">
-                        {pagination.totalItems}
-                    </span>{' '}
-                    leads
+                    {pagination.totalItems > 0 ? (
+                        <>
+                            Showing{' '}
+                            <span className="font-medium text-foreground">
+                                {(page - 1) * perPage + 1}
+                            </span>{' '}
+                            to{' '}
+                            <span className="font-medium text-foreground">
+                                {Math.min(
+                                    page * perPage,
+                                    pagination.totalItems
+                                )}
+                            </span>{' '}
+                            of{' '}
+                            <span className="font-medium text-foreground">
+                                {pagination.totalItems}
+                            </span>{' '}
+                            leads
+                        </>
+                    ) : (
+                        <>No leads to display</>
+                    )}
                 </div>
+
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
