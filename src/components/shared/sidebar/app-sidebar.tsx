@@ -12,23 +12,23 @@ import Image from 'next/image';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
-        <Sidebar
-            collapsible="offcanvas"
-            {...props}
-            className="sticky top-0 backdrop-blur-sm z-50"
-        >
+        <Sidebar collapsible="offcanvas" {...props}>
             <SidebarHeader>
                 <Link href="/dashboard" className="mx-auto">
                     <Image
-                        src="https://res.cloudinary.com/dny7zfbg9/image/upload/v1759400371/shmce8gonodjco6oq74k.png"
+                        src={process.env.NEXT_PUBLIC_BRAND_LOGO!}
                         alt="logo"
-                        width={140}
+                        width={125}
                         height={40}
+                        style={{
+                            width: 'auto',
+                            height: 'auto',
+                        }}
                         priority
                     />
                 </Link>
             </SidebarHeader>
-            <SidebarContent>
+            <SidebarContent className="mt-4">
                 <NavMain />
             </SidebarContent>
         </Sidebar>

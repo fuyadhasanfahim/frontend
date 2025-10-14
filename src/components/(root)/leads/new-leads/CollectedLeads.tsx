@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Card,
     CardContent,
@@ -50,32 +50,40 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { IconEdit, IconInfoCircle } from '@tabler/icons-react';
 
+interface CollectedLeadsProps {
+    isLoading: boolean;
+    isError: boolean;
+    leads: ILead[];
+    pagination: {
+        totalItems: number;
+        totalPages: number;
+        currentPage: number;
+        limit: number;
+    };
+    setPage: React.Dispatch<React.SetStateAction<number>>;
+    setPerPage: (perPage: number) => void;
+    setDate: (date: Date | undefined) => void;
+    date: Date | undefined;
+    perPage: number;
+    page: number;
+}
+
 export default function CollectedLeads({
-    setCollectedLeadsCount,
-}: {
-    setCollectedLeadsCount: React.Dispatch<React.SetStateAction<number>>;
-}) {
-    const [page, setPage] = useState(1);
-    const [perPage, setPerPage] = useState(20);
-    const [date, setDate] = useState<Date | undefined>(new Date());
+    isLoading,
+    isError,
+    leads,
+    pagination,
+    setPage,
+    setPerPage,
+    setDate,
+    date,
+    perPage,
+    page,
+}: CollectedLeadsProps) {
     const [open, setOpen] = useState<boolean>(false);
 
-    const { data, isLoading, isError } = useGetLeadsByDateQuery({
-        page,
-        limit: perPage,
-        date: date ? format(date, 'yyyy-MM-dd') : undefined,
-    });
-
-    const leads = data?.data ?? [];
-    const pagination = data?.pagination ?? { totalItems: 0, totalPages: 1 };
-
-    useEffect(() => {
-        if (data?.pagination?.totalItems)
-            setCollectedLeadsCount(data.pagination.totalItems);
-    }, [data, setCollectedLeadsCount]);
-
     return (
-        <Card>
+        <Card className="mt-6">
             <CardHeader>
                 <CardTitle>Daily Lead Summary</CardTitle>
                 <CardDescription>

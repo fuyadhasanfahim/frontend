@@ -56,11 +56,7 @@ const leadSchema = z.object({
 
 type LeadFormValues = z.infer<typeof leadSchema>;
 
-export default function LeadForm({
-    setCollectedLeadsCount,
-}: {
-    setCollectedLeadsCount: React.Dispatch<React.SetStateAction<number>>;
-}) {
+export default function LeadForm() {
     const form = useForm<LeadFormValues>({
         resolver: zodResolver(leadSchema),
         defaultValues: {
@@ -103,7 +99,6 @@ export default function LeadForm({
                             'Duplicate lead found with same company name & website.'
                     );
                 } else {
-                    // setCollectedLeadsCount((count: number) => count + 1);
                     toast.success(res.message || 'Lead created successfully!');
                     form.reset();
                 }

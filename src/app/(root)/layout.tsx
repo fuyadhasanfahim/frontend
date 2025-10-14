@@ -2,7 +2,7 @@ import { AppSidebar } from '@/components/shared/sidebar/app-sidebar';
 import { SiteHeader } from '@/components/shared/sidebar/site-header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <SidebarProvider
             style={
