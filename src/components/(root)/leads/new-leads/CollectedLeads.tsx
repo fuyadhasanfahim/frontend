@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
     Card,
     CardContent,
@@ -17,7 +17,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useGetLeadsByDateQuery } from '@/redux/features/lead/leadApi';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ILead } from '@/types/lead.interface';
 import Link from 'next/link';
@@ -49,7 +48,6 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { IconEdit, IconInfoCircle } from '@tabler/icons-react';
-import { cn } from '@/lib/utils';
 
 interface CollectedLeadsProps {
     isLoading: boolean;

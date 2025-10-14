@@ -33,7 +33,6 @@ import { useGetCountriesQuery } from '@/redux/features/country/countryApi';
 import Link from 'next/link';
 import { IconEdit, IconInfoCircle } from '@tabler/icons-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 
 type SortOption =
     | 'companyAsc'

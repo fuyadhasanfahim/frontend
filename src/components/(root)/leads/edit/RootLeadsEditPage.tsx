@@ -158,9 +158,9 @@ export default function RootLeadsEditPage() {
                 toast.success('Lead updated successfully!');
                 router.push('/leads');
             }
-        } catch (err: any) {
+        } catch (err) {
             toast.error(
-                err?.data?.message ||
+                (err as Error).message ||
                     (err as Error).message ||
                     'Failed to update lead.'
             );

@@ -105,9 +105,9 @@ export default function LeadForm() {
             } else {
                 toast.error(res.message || 'Failed to create lead.');
             }
-        } catch (error: any) {
+        } catch (error) {
             toast.error(
-                error?.data?.message ||
+                (error as Error).message ||
                     (error as Error).message ||
                     'An unexpected error occurred.'
             );
