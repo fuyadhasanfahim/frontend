@@ -22,10 +22,12 @@ export default function RootNewLeadsPage() {
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="lead-form">
-                    <LeadForm />
+                    <LeadForm setCollectedLeadsCount={setCollectedLeadsCount} />
                 </TabsContent>
                 <TabsContent value="collected-leads">
-                    <CollectedLeads setCollectedLeadsCount={setCollectedLeadsCount} />
+                    <CollectedLeads
+                        setCollectedLeadsCount={setCollectedLeadsCount}
+                    />
                 </TabsContent>
             </Tabs>
         </div>

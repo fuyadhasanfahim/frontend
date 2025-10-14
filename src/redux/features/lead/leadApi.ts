@@ -34,6 +34,18 @@ export const leadApi = apiSlice.injectEndpoints({
             }),
             providesTags: ['Leads'],
         }),
+        getLeadsByDate: builder.query({
+            query: ({ page, limit, date }) => ({
+                url: '/leads/get-leads-by-date',
+                method: 'GET',
+                params: {
+                    page,
+                    limit,
+                    date,
+                },
+            }),
+            providesTags: ['Leads'],
+        }),
         getLeadById: builder.query({
             query: (id: string) => ({
                 url: `/leads/get-lead/${id}`,
@@ -63,6 +75,7 @@ export const leadApi = apiSlice.injectEndpoints({
 
 export const {
     useGetLeadsQuery,
+    useGetLeadsByDateQuery,
     useGetLeadByIdQuery,
     useImportLeadsMutation,
     useNewLeadMutation,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form } from '@/components/ui/form';
@@ -28,6 +28,7 @@ import {
 import { useParams, useRouter } from 'next/navigation';
 import { IContactPerson } from '@/types/lead.interface';
 
+// ✅ Zod validation schema
 const leadSchema = z.object({
     company: z.object({
         name: z.string().min(1, 'Company name is required'),
@@ -72,6 +73,7 @@ export default function RootLeadsEditPage() {
     } = useGetLeadByIdQuery(id, {
         skip: !id,
     });
+
     const [updateLead, { isLoading: updating }] = useUpdateLeadMutation();
 
     const form = useForm<LeadFormValues>({
@@ -93,7 +95,13 @@ export default function RootLeadsEditPage() {
         },
     });
 
-    // Pre-fill form when data loads
+    // ✅ Manage dynamic contactPersons array
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: 'contactPersons',
+    });
+
+    // ✅ Pre-fill form with lead data
     useEffect(() => {
         if (data?.lead) {
             const lead = data.lead;
@@ -133,358 +141,428 @@ export default function RootLeadsEditPage() {
         }
     }, [data, form]);
 
+    // ✅ Company field array helpers
+    const companyEmails = form.watch('company.emails');
+    const setCompanyEmails = (next: string[]) =>
+        form.setValue('company.emails', next);
+
+    const companyPhones = form.watch('company.phones');
+    const setCompanyPhones = (next: string[]) =>
+        form.setValue('company.phones', next);
+
+    // ✅ Submit handler
     const onSubmit = async (values: LeadFormValues) => {
         try {
-            const res = await updateLead({ id, body: { ...values } }).unwrap();
+            const res = await updateLead({ id, body: values }).unwrap();
             if (res.success) {
                 toast.success('Lead updated successfully!');
                 router.push('/leads');
             }
-        } catch (err) {
-            toast.error((err as Error).message || 'Failed to update lead.');
+        } catch (err: any) {
+            toast.error(
+                err?.data?.message ||
+                    (err as Error).message ||
+                    'Failed to update lead.'
+            );
         }
     };
 
-    // Watchers for dynamic inputs
-    const companyEmails = form.watch('company.emails');
-    const companyPhones = form.watch('company.phones');
-    const contact = form.watch('contactPersons')[0];
+    if (loadingLead) {
+        return (
+            <div className="p-8 space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Loading Lead Data...</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Spinner />
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (isError)
+        return (
+            <div className="p-8 text-center text-gray-500">
+                <p>Failed to load lead information.</p>
+            </div>
+        );
 
     return (
         <Form {...form}>
             <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="max-w-4xl w-full mx-auto mt-6"
+                className="max-w-5xl w-full mx-auto mt-6 space-y-8"
             >
+                {/* --- Company Info --- */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Edit Lead</CardTitle>
+                        <CardTitle>Company Information</CardTitle>
                         <CardDescription>
-                            Update the lead information below.
+                            Basic details about the company.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label>Company Name *</Label>
+                                <Input
+                                    {...form.register('company.name')}
+                                    placeholder="Enter company name"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Website *</Label>
+                                <Input
+                                    {...form.register('company.website')}
+                                    placeholder="https://example.com"
+                                />
+                            </div>
+                        </div>
+
+                        {/* --- Emails + Phones --- */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label>Email(s) *</Label>
+                                {companyEmails.map((_, i) => (
+                                    <div key={i} className="flex gap-2 mt-1">
+                                        <Input
+                                            {...form.register(
+                                                `company.emails.${i}`
+                                            )}
+                                            placeholder="email@example.com"
+                                        />
+                                        {i === 0 ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() =>
+                                                    setCompanyEmails([
+                                                        ...companyEmails,
+                                                        '',
+                                                    ])
+                                                }
+                                            >
+                                                <IconPlus className="h-4 w-4" />
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                onClick={() =>
+                                                    setCompanyEmails(
+                                                        companyEmails.filter(
+                                                            (_, idx) =>
+                                                                idx !== i
+                                                        )
+                                                    )
+                                                }
+                                            >
+                                                <IconTrash className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Phone(s) *</Label>
+                                {companyPhones.map((_, i) => (
+                                    <div key={i} className="flex gap-2 mt-1">
+                                        <Input
+                                            {...form.register(
+                                                `company.phones.${i}`
+                                            )}
+                                            placeholder="01xxxxxxxxx"
+                                        />
+                                        {i === 0 ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() =>
+                                                    setCompanyPhones([
+                                                        ...companyPhones,
+                                                        '',
+                                                    ])
+                                                }
+                                            >
+                                                <IconPlus className="h-4 w-4" />
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                onClick={() =>
+                                                    setCompanyPhones(
+                                                        companyPhones.filter(
+                                                            (_, idx) =>
+                                                                idx !== i
+                                                        )
+                                                    )
+                                                }
+                                            >
+                                                <IconTrash className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* --- Address + Country --- */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label>Address</Label>
+                                <Input
+                                    {...form.register('address')}
+                                    placeholder="Enter address"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Country *</Label>
+                                <CountrySelect
+                                    value={form.watch('country')}
+                                    onChange={(val) =>
+                                        form.setValue('country', val)
+                                    }
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* --- Contact Persons --- */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Contact Person(s)</CardTitle>
+                        <CardDescription>
+                            Add one or more contact persons.
                         </CardDescription>
                     </CardHeader>
 
-                    <CardContent className="space-y-4">
-                        {/* Loading skeleton */}
-                        {loadingLead ? (
-                            <div className="space-y-4">
-                                <Spinner />
-                            </div>
-                        ) : isError ? (
-                            <p className="text-red-500">
-                                Failed to load lead data.
-                            </p>
-                        ) : (
-                            <>
-                                {/* Company Info */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <Label>Company Name *</Label>
-                                        <Input
-                                            {...form.register('company.name')}
-                                            placeholder="Enter company name"
-                                        />
-                                    </div>
+                    <CardContent className="space-y-6">
+                        {fields.map((field, index) => {
+                            const contactEmails = form.watch(
+                                `contactPersons.${index}.emails`
+                            );
+                            const setEmails = (next: string[]) =>
+                                form.setValue(
+                                    `contactPersons.${index}.emails`,
+                                    next
+                                );
 
-                                    <div className="space-y-3">
-                                        <Label>Website</Label>
-                                        <Input
-                                            {...form.register(
-                                                'company.website'
-                                            )}
-                                            placeholder="https://example.com"
-                                        />
-                                    </div>
-                                </div>
+                            const contactPhones = form.watch(
+                                `contactPersons.${index}.phones`
+                            );
+                            const setPhones = (next: string[]) =>
+                                form.setValue(
+                                    `contactPersons.${index}.phones`,
+                                    next
+                                );
 
-                                {/* Emails / Phones */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <Label>Email(s) *</Label>
-                                        {companyEmails?.map((_, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex gap-2 mt-1"
+                            return (
+                                <div
+                                    key={field.id}
+                                    className="p-4 border rounded-lg space-y-4"
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="font-semibold">
+                                            Contact Person {index + 1}
+                                        </h3>
+                                        {fields.length > 1 && (
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                onClick={() => remove(index)}
                                             >
-                                                <Input
-                                                    {...form.register(
-                                                        `company.emails.${i}`
-                                                    )}
-                                                    placeholder="email@example.com"
-                                                />
-                                                {i === 0 ? (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'company.emails',
-                                                                [
-                                                                    ...companyEmails,
-                                                                    '',
-                                                                ]
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconPlus className="h-4 w-4" />
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'company.emails',
-                                                                companyEmails.filter(
-                                                                    (_, idx) =>
-                                                                        idx !==
-                                                                        i
-                                                                )
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconTrash className="h-4 w-4" />
-                                                    </Button>
+                                                <IconTrash className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label>First Name *</Label>
+                                            <Input
+                                                {...form.register(
+                                                    `contactPersons.${index}.firstName`
                                                 )}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <Label>Phone(s) *</Label>
-                                        {companyPhones?.map((_, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex gap-2 mt-1"
-                                            >
-                                                <Input
-                                                    {...form.register(
-                                                        `company.phones.${i}`
-                                                    )}
-                                                    placeholder="01xxxxxxxxx"
-                                                />
-                                                {i === 0 ? (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'company.phones',
-                                                                [
-                                                                    ...companyPhones,
-                                                                    '',
-                                                                ]
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconPlus className="h-4 w-4" />
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'company.phones',
-                                                                companyPhones.filter(
-                                                                    (_, idx) =>
-                                                                        idx !==
-                                                                        i
-                                                                )
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconTrash className="h-4 w-4" />
-                                                    </Button>
+                                                placeholder="First name"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Last Name</Label>
+                                            <Input
+                                                {...form.register(
+                                                    `contactPersons.${index}.lastName`
                                                 )}
-                                            </div>
-                                        ))}
+                                                placeholder="Last name"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Contact Info */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <Label>First Name *</Label>
-                                        <Input
-                                            {...form.register(
-                                                'contactPersons.0.firstName'
-                                            )}
-                                            placeholder="First name"
-                                        />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label>Last Name</Label>
-                                        <Input
-                                            {...form.register(
-                                                'contactPersons.0.lastName'
-                                            )}
-                                            placeholder="Last name"
-                                        />
-                                    </div>
-                                    <div className="space-y-3 col-span-2">
-                                        <Label>Designation</Label>
-                                        <Input
-                                            {...form.register(
-                                                'contactPersons.0.designation'
-                                            )}
-                                            placeholder="Designation"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Contact Details */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <Label>Contact Email(s)</Label>
-                                        {contact.emails?.map((_, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex gap-2 mt-1"
-                                            >
-                                                <Input
-                                                    {...form.register(
-                                                        `contactPersons.0.emails.${i}`
-                                                    )}
-                                                    placeholder="email@example.com"
-                                                />
-                                                {i === 0 ? (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'contactPersons.0.emails',
-                                                                [
-                                                                    ...contact.emails,
+                                    <div className="grid grid-cols-2 gap-6">
+                                        {/* Emails */}
+                                        <div className="space-y-2">
+                                            <Label>Email(s)</Label>
+                                            {contactEmails.map((_, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="flex gap-2 mt-1"
+                                                >
+                                                    <Input
+                                                        {...form.register(
+                                                            `contactPersons.${index}.emails.${i}`
+                                                        )}
+                                                        placeholder="email@example.com"
+                                                    />
+                                                    {i === 0 ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={() =>
+                                                                setEmails([
+                                                                    ...contactEmails,
                                                                     '',
-                                                                ]
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconPlus className="h-4 w-4" />
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'contactPersons.0.emails',
-                                                                contact.emails.filter(
-                                                                    (_, idx) =>
-                                                                        idx !==
-                                                                        i
+                                                                ])
+                                                            }
+                                                        >
+                                                            <IconPlus className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            onClick={() =>
+                                                                setEmails(
+                                                                    contactEmails.filter(
+                                                                        (
+                                                                            _,
+                                                                            idx
+                                                                        ) =>
+                                                                            idx !==
+                                                                            i
+                                                                    )
                                                                 )
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconTrash className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <Label>Contact Phone(s)</Label>
-                                        {contact.phones?.map((_, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex gap-2 mt-1"
-                                            >
-                                                <Input
-                                                    {...form.register(
-                                                        `contactPersons.0.phones.${i}`
+                                                            }
+                                                        >
+                                                            <IconTrash className="h-4 w-4" />
+                                                        </Button>
                                                     )}
-                                                    placeholder="01xxxxxxxxx"
-                                                />
-                                                {i === 0 ? (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'contactPersons.0.phones',
-                                                                [
-                                                                    ...contact.phones,
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Phones */}
+                                        <div className="space-y-2">
+                                            <Label>Phone(s)</Label>
+                                            {contactPhones.map((_, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="flex gap-2 mt-1"
+                                                >
+                                                    <Input
+                                                        {...form.register(
+                                                            `contactPersons.${index}.phones.${i}`
+                                                        )}
+                                                        placeholder="01xxxxxxxxx"
+                                                    />
+                                                    {i === 0 ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="icon"
+                                                            onClick={() =>
+                                                                setPhones([
+                                                                    ...contactPhones,
                                                                     '',
-                                                                ]
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconPlus className="h-4 w-4" />
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="icon"
-                                                        onClick={() =>
-                                                            form.setValue(
-                                                                'contactPersons.0.phones',
-                                                                contact.phones.filter(
-                                                                    (_, idx) =>
-                                                                        idx !==
-                                                                        i
+                                                                ])
+                                                            }
+                                                        >
+                                                            <IconPlus className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            onClick={() =>
+                                                                setPhones(
+                                                                    contactPhones.filter(
+                                                                        (
+                                                                            _,
+                                                                            idx
+                                                                        ) =>
+                                                                            idx !==
+                                                                            i
+                                                                    )
                                                                 )
-                                                            )
-                                                        }
-                                                    >
-                                                        <IconTrash className="h-4 w-4" />
-                                                    </Button>
+                                                            }
+                                                        >
+                                                            <IconTrash className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="space-y-2 col-span-2">
+                                            <Label>Designation</Label>
+                                            <Input
+                                                {...form.register(
+                                                    `contactPersons.${index}.designation`
                                                 )}
-                                            </div>
-                                        ))}
+                                                placeholder="Designation"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
+                            );
+                        })}
 
-                                {/* Other Info */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <Label>Address</Label>
-                                        <Input
-                                            {...form.register('address')}
-                                            placeholder="Enter address"
-                                        />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <Label>Country *</Label>
-                                        <CountrySelect
-                                            value={form.watch('country')}
-                                            onChange={(val) =>
-                                                form.setValue('country', val)
-                                            }
-                                        />
-                                    </div>
-                                </div>
+                        {/* Add Another Person */}
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() =>
+                                append({
+                                    firstName: '',
+                                    lastName: '',
+                                    designation: '',
+                                    emails: [''],
+                                    phones: [''],
+                                })
+                            }
+                        >
+                            <IconPlus className="mr-1" />
+                            Add Another Contact Person
+                        </Button>
 
-                                <div className="space-y-3">
-                                    <Label>Notes</Label>
-                                    <Textarea
-                                        {...form.register('notes')}
-                                        placeholder="Additional notes..."
-                                    />
-                                </div>
-                            </>
-                        )}
+                        <div className="space-y-2">
+                            <Label>Notes</Label>
+                            <Textarea
+                                {...form.register('notes')}
+                                placeholder="Additional notes..."
+                            />
+                        </div>
                     </CardContent>
 
                     <CardFooter className="flex gap-4">
                         <Button type="submit" disabled={updating}>
-                            {updating ? <Spinner /> : 'Update Lead'}
+                            {updating ? <Spinner /> : 'Save Changes'}
                         </Button>
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => router.push('/leads')}
+                            onClick={() => form.reset()}
                         >
                             Cancel
                         </Button>

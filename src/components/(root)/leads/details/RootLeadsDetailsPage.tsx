@@ -50,7 +50,6 @@ export default function LeadDetailsPage() {
         );
 
     const lead: ILead = data.lead;
-    const contact = lead.contactPersons?.[0];
 
     return (
         <div className="p-8">
@@ -74,13 +73,13 @@ export default function LeadDetailsPage() {
                     <div className="flex items-center gap-2">
                         <Link href="/leads">
                             <Button variant="outline" size="sm">
-                                <IconArrowLeft />
+                                <IconArrowLeft className="h-4 w-4 mr-1" />
                                 Back
                             </Button>
                         </Link>
                         <Link href={`/leads/edit/${id}`}>
                             <Button variant="outline" size="sm">
-                                <IconEdit />
+                                <IconEdit className="h-4 w-4 mr-1" />
                                 Edit
                             </Button>
                         </Link>
@@ -98,42 +97,63 @@ export default function LeadDetailsPage() {
                         </p>
                     </CardContent>
                 </Card>
+
                 <Card className="text-center p-4 shadow-sm">
                     <CardContent className="p-0">
-                        <p className="text-sm text-gray-500 mb-1">Contact</p>
+                        <p className="text-sm text-gray-500 mb-1">
+                            Total Contacts
+                        </p>
                         <p className="text-base font-semibold">
-                            {contact ? contact.firstName : 'N/A'}
+                            {lead.contactPersons?.length || 0}
                         </p>
                     </CardContent>
                 </Card>
+
                 <Card className="text-center p-4 shadow-sm">
                     <CardContent className="p-0">
                         <p className="text-sm text-gray-500 mb-1">Emails</p>
                         <p className="text-base font-semibold">
-                            {lead.company?.emails?.length ||
-                            contact?.emails?.length
-                                ? (lead.company?.emails || contact?.emails)
-                                      ?.length
-                                : 0}
+                            {(() => {
+                                const companyEmails =
+                                    lead.company?.emails ?? [];
+                                const contactEmails =
+                                    lead.contactPersons?.flatMap(
+                                        (cp) => cp.emails
+                                    ) ?? [];
+                                const uniqueEmails = new Set([
+                                    ...companyEmails,
+                                    ...contactEmails,
+                                ]);
+                                return uniqueEmails.size;
+                            })()}
                         </p>
                     </CardContent>
                 </Card>
+
                 <Card className="text-center p-4 shadow-sm">
                     <CardContent className="p-0">
                         <p className="text-sm text-gray-500 mb-1">Phones</p>
                         <p className="text-base font-semibold">
-                            {lead.company?.phones?.length ||
-                            contact?.phones?.length
-                                ? (lead.company?.phones || contact?.phones)
-                                      ?.length
-                                : 0}
+                            {(() => {
+                                const companyPhones =
+                                    lead.company?.phones ?? [];
+                                const contactPhones =
+                                    lead.contactPersons?.flatMap(
+                                        (cp) => cp.phones
+                                    ) ?? [];
+                                const uniquePhones = new Set([
+                                    ...companyPhones,
+                                    ...contactPhones,
+                                ]);
+                                return uniquePhones.size;
+                            })()}
                         </p>
                     </CardContent>
                 </Card>
             </div>
 
             {/* --- Info Section --- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 {/* Company Info */}
                 <Card className="shadow-sm border border-gray-200 rounded-xl">
                     <CardHeader className="flex items-center gap-2">
@@ -150,7 +170,7 @@ export default function LeadDetailsPage() {
                                     href={lead.company.website}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-400 hover:underline"
+                                    className="text-blue-500 hover:underline"
                                 >
                                     {lead.company.website}
                                 </a>
@@ -177,42 +197,60 @@ export default function LeadDetailsPage() {
                         <div className="flex items-center gap-2">
                             <IconMapPin className="h-4 w-4 text-gray-500" />
                             <span className="capitalize">
-                                {lead.country || 'N/A'}
+                                {lead.address || lead.country || 'N/A'}
                             </span>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Contact Person */}
+                {/* Contact Persons */}
                 <Card className="shadow-sm border border-gray-200 rounded-xl">
                     <CardHeader className="flex items-center gap-2">
                         <IconUser className="h-5 w-5 text-purple-500" />
                         <CardTitle className="text-lg font-medium">
-                            Contact Person
+                            Contact Persons
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="text-sm text-gray-700 space-y-2">
-                        {contact ? (
-                            <>
-                                <p>
-                                    <strong>Name:</strong> {contact.firstName}{' '}
-                                    {contact.lastName || ''}
-                                </p>
-                                <p>
-                                    <strong>Designation:</strong>{' '}
-                                    {contact.designation || 'N/A'}
-                                </p>
-                                <p>
-                                    <strong>Email:</strong>{' '}
-                                    {contact.emails.join(', ') || 'N/A'}
-                                </p>
-                                <p>
-                                    <strong>Phone:</strong>{' '}
-                                    {contact.phones.join(', ') || 'N/A'}
-                                </p>
-                            </>
+                    <CardContent className="text-sm text-gray-700 space-y-4">
+                        {lead.contactPersons?.length ? (
+                            lead.contactPersons.map((person, i) => (
+                                <div
+                                    key={i}
+                                    className="border-b last:border-none pb-3"
+                                >
+                                    <p className="font-medium">
+                                        {person.firstName}{' '}
+                                        {person.lastName || ''}
+                                    </p>
+                                    {person.designation && (
+                                        <p className="text-gray-500">
+                                            {person.designation}
+                                        </p>
+                                    )}
+                                    <div className="mt-2 space-y-1">
+                                        <p className="flex items-center gap-2">
+                                            <IconMail className="h-4 w-4 text-gray-500" />
+                                            <span>
+                                                {person.emails?.length
+                                                    ? person.emails.join(', ')
+                                                    : 'N/A'}
+                                            </span>
+                                        </p>
+                                        <p className="flex items-center gap-2">
+                                            <IconPhone className="h-4 w-4 text-gray-500" />
+                                            <span>
+                                                {person.phones?.length
+                                                    ? person.phones.join(', ')
+                                                    : 'N/A'}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
                         ) : (
-                            <p className="text-gray-500">No contact found.</p>
+                            <p className="text-gray-500">
+                                No contact persons found.
+                            </p>
                         )}
                     </CardContent>
                 </Card>
@@ -239,7 +277,7 @@ export default function LeadDetailsPage() {
                                             {a.type} – {a.outcomeCode}
                                         </span>
                                         <span className="text-xs text-gray-500">
-                                            {format(a.at, 'PPP, p')}
+                                            {format(new Date(a.at), 'PPP, p')}
                                         </span>
                                     </div>
                                     {a.notes && (
