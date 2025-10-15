@@ -24,11 +24,11 @@ import { useNewLeadMutation } from '@/redux/features/lead/leadApi';
 import { CountrySelect } from '@/components/shared/CountrySelect';
 
 const contactPersonSchema = z.object({
-    firstName: z.string().min(1, 'First name is required'),
+    firstName: z.string().optional(),
     lastName: z.string().optional(),
     designation: z.string().optional(),
     emails: z
-        .array(z.string().email('Invalid email'))
+        .array(z.email('Invalid email'))
         .min(1, 'At least one email required'),
     phones: z
         .array(z.string().min(7, 'Phone must be at least 7 digits'))
@@ -38,13 +38,7 @@ const contactPersonSchema = z.object({
 const leadSchema = z.object({
     company: z.object({
         name: z.string().min(1, 'Company name is required'),
-        website: z.string().url('Invalid URL'),
-        emails: z
-            .array(z.string().email('Invalid email'))
-            .min(1, 'At least one email is required'),
-        phones: z
-            .array(z.string().min(7, 'Phone must be at least 7 digits'))
-            .min(1, 'At least one phone number is required'),
+        website: z.url('Invalid URL'),
     }),
     address: z.string().optional(),
     country: z.string().min(1, 'Country is required'),
@@ -63,8 +57,6 @@ export default function LeadForm() {
             company: {
                 name: '',
                 website: '',
-                emails: [''],
-                phones: [''],
             },
             contactPersons: [
                 {
@@ -114,14 +106,6 @@ export default function LeadForm() {
         }
     };
 
-    const companyEmails = form.watch('company.emails');
-    const setCompanyEmails = (next: string[]) =>
-        form.setValue('company.emails', next);
-
-    const companyPhones = form.watch('company.phones');
-    const setCompanyPhones = (next: string[]) =>
-        form.setValue('company.phones', next);
-
     return (
         <Form {...form}>
             <form
@@ -150,100 +134,6 @@ export default function LeadForm() {
                                     {...form.register('company.website')}
                                     placeholder="https://example.com"
                                 />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                            {/* Company Emails */}
-                            <div className="space-y-2">
-                                <Label>Email(s) *</Label>
-                                {companyEmails.map((_, i) => (
-                                    <div key={i} className="flex gap-2 mt-1">
-                                        <Input
-                                            {...form.register(
-                                                `company.emails.${i}`
-                                            )}
-                                            placeholder="email@example.com"
-                                        />
-                                        {i === 0 ? (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() =>
-                                                    setCompanyEmails([
-                                                        ...companyEmails,
-                                                        '',
-                                                    ])
-                                                }
-                                            >
-                                                <IconPlus className="h-4 w-4" />
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="icon"
-                                                onClick={() =>
-                                                    setCompanyEmails(
-                                                        companyEmails.filter(
-                                                            (_, idx) =>
-                                                                idx !== i
-                                                        )
-                                                    )
-                                                }
-                                            >
-                                                <IconTrash className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Company Phones */}
-                            <div className="space-y-2">
-                                <Label>Phone(s) *</Label>
-                                {companyPhones.map((_, i) => (
-                                    <div key={i} className="flex gap-2 mt-1">
-                                        <Input
-                                            {...form.register(
-                                                `company.phones.${i}`
-                                            )}
-                                            placeholder="01xxxxxxxxx"
-                                        />
-                                        {i === 0 ? (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() =>
-                                                    setCompanyPhones([
-                                                        ...companyPhones,
-                                                        '',
-                                                    ])
-                                                }
-                                            >
-                                                <IconPlus className="h-4 w-4" />
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="icon"
-                                                onClick={() =>
-                                                    setCompanyPhones(
-                                                        companyPhones.filter(
-                                                            (_, idx) =>
-                                                                idx !== i
-                                                        )
-                                                    )
-                                                }
-                                            >
-                                                <IconTrash className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
                             </div>
                         </div>
 
@@ -320,7 +210,7 @@ export default function LeadForm() {
 
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <Label>First Name *</Label>
+                                            <Label>First Name</Label>
                                             <Input
                                                 {...form.register(
                                                     `contactPersons.${index}.firstName`
@@ -342,7 +232,7 @@ export default function LeadForm() {
                                     <div className="grid grid-cols-2 gap-6">
                                         {/* Emails */}
                                         <div className="space-y-2">
-                                            <Label>Email(s)</Label>
+                                            <Label>Email(s) *</Label>
                                             {contactEmails.map((_, i) => (
                                                 <div
                                                     key={i}
@@ -395,7 +285,7 @@ export default function LeadForm() {
 
                                         {/* Phones */}
                                         <div className="space-y-2">
-                                            <Label>Phone(s)</Label>
+                                            <Label>Phone(s) *</Label>
                                             {contactPhones.map((_, i) => (
                                                 <div
                                                     key={i}

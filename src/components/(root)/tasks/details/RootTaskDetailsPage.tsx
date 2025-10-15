@@ -331,13 +331,6 @@ export default function RootTaskDetailsPage() {
                                                 : '-'}
                                         </TableCell>
                                         <TableCell className="border text-xs">
-                                            {lead.company.emails?.map(
-                                                (e, i) => (
-                                                    <p key={`co-email-${i}`}>
-                                                        {e}
-                                                    </p>
-                                                )
-                                            )}
                                             {lead.contactPersons?.flatMap(
                                                 (cp, cpIndex) =>
                                                     cp.emails?.map(
@@ -352,13 +345,6 @@ export default function RootTaskDetailsPage() {
                                             )}
                                         </TableCell>
                                         <TableCell className="border text-xs">
-                                            {lead.company.phones?.map(
-                                                (p, i) => (
-                                                    <p key={`co-phone-${i}`}>
-                                                        {p}
-                                                    </p>
-                                                )
-                                            )}
                                             {lead.contactPersons?.flatMap(
                                                 (cp, cpIndex) =>
                                                     cp.phones?.map(

@@ -65,6 +65,8 @@ export default function RootLeadCreateTaskPage() {
     const [countryFilter, setCountryFilter] = useState('all');
     const [sort, setSort] = useState<SortOption>('companyAsc');
 
+    const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
+
     const { data: countries } = useGetCountriesQuery({});
     const {
         data: usersData,
@@ -80,8 +82,6 @@ export default function RootLeadCreateTaskPage() {
         sortOrder: sort.endsWith('Asc') ? 'asc' : 'desc',
         status: 'new',
     });
-
-    console.log(data);
 
     const leads = data?.data ?? [];
     const pagination = data?.pagination ?? { totalItems: 0, totalPages: 1 };
@@ -99,22 +99,25 @@ export default function RootLeadCreateTaskPage() {
     };
 
     const handleCreateTask = async () => {
-        if (!selectedUser) return toast.error('Please select a user');
+        const assignedUserId = isAdmin ? selectedUser : user?._id;
+
+        if (!assignedUserId) return toast.error('Please select a user');
         if (selectedLeads.length === 0)
             return toast.error('Please select at least one lead');
 
         try {
             const res = await createTask({
                 title: `Lead Assignment - ${new Date().toLocaleDateString()}`,
-                description: `Lead generation task assigned to ${selectedUser}`,
+                description: `Lead generation task assigned to ${assignedUserId}`,
                 type: 'lead_generation',
                 quantity: selectedLeads.length,
-                assignedTo: selectedUser,
+                assignedTo: assignedUserId,
                 leads: selectedLeads,
             }).unwrap();
 
             toast.success(res.message || 'Task created successfully!');
             setSelectedLeads([]);
+            if (isAdmin) setSelectedUser(''); // optional UX reset
         } catch (err) {
             const message =
                 (err as { data?: { message?: string } })?.data?.message ??
@@ -149,99 +152,120 @@ export default function RootLeadCreateTaskPage() {
 
             {/* Filters */}
             <div className="grid grid-cols-5 items-center gap-6">
-                {/* Role */}
-                <div className="grid gap-2">
-                    <Label htmlFor="role-select">Select Role</Label>
-                    <Select
-                        onValueChange={setSelectedRole}
-                        value={selectedRole || 'all'}
-                    >
-                        <SelectTrigger
-                            id="role-select"
-                            className="w-full capitalize"
-                        >
-                            <SelectValue placeholder="Select role..." />
-                        </SelectTrigger>
-                        <SelectContent className="capitalize">
-                            <SelectItem value="all">All Roles</SelectItem>
-                            {ROLES.map((role) => (
-                                <SelectItem key={role} value={role}>
-                                    {role.replace(/-/g, ' ')}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {/* User */}
-                <div className="grid gap-2">
-                    <Label htmlFor="user-select">Select User</Label>
-                    <Select
-                        onValueChange={setSelectedUser}
-                        value={selectedUser}
-                        disabled={usersLoading || usersFetching}
-                    >
-                        <SelectTrigger id="user-select" className="w-full">
-                            <SelectValue placeholder="Select user..." />
-                        </SelectTrigger>
-
-                        <SelectContent>
-                            {usersLoading || usersFetching ? (
-                                <div className="space-y-2 p-2">
-                                    {Array.from({ length: 5 }).map((_, i) => (
-                                        <div
-                                            key={i}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <Skeleton className="h-6 w-6 rounded-full" />
-                                            <div className="space-y-1">
-                                                <Skeleton className="h-3 w-32" />
-                                                <Skeleton className="h-2 w-20" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : filteredUsers.length > 0 ? (
-                                filteredUsers.map((u) => (
-                                    <SelectItem
-                                        key={u._id}
-                                        value={
-                                            u._id ||
-                                            `user-${Math.random()
-                                                .toString(36)
-                                                .slice(2)}`
-                                        }
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-6 w-6">
-                                                <AvatarImage
-                                                    src={u.image || ''}
-                                                    alt={u.firstName || 'User'}
-                                                />
-                                                <AvatarFallback>
-                                                    {u.firstName?.[0]?.toUpperCase() ||
-                                                        'U'}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium">
-                                                    {u.firstName} {u.lastName}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground capitalize">
-                                                    {u.role?.replace(/-/g, ' ')}
-                                                </span>
-                                            </div>
-                                        </div>
+                {/* Role & User (only visible to admin/super-admin) */}
+                {isAdmin ? (
+                    <>
+                        {/* Role */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="role-select">Select Role</Label>
+                            <Select
+                                onValueChange={setSelectedRole}
+                                value={selectedRole || 'all'}
+                            >
+                                <SelectTrigger
+                                    id="role-select"
+                                    className="w-full capitalize"
+                                >
+                                    <SelectValue placeholder="Select role..." />
+                                </SelectTrigger>
+                                <SelectContent className="capitalize">
+                                    <SelectItem value="all">
+                                        All Roles
                                     </SelectItem>
-                                ))
-                            ) : (
-                                <SelectItem value="no-users" disabled>
-                                    No users found
-                                </SelectItem>
-                            )}
-                        </SelectContent>
-                    </Select>
-                </div>
+                                    {ROLES.map((role) => (
+                                        <SelectItem key={role} value={role}>
+                                            {role.replace(/-/g, ' ')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* User */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="user-select">Select User</Label>
+                            <Select
+                                onValueChange={setSelectedUser}
+                                value={selectedUser}
+                                disabled={usersLoading || usersFetching}
+                            >
+                                <SelectTrigger
+                                    id="user-select"
+                                    className="w-full"
+                                >
+                                    <SelectValue placeholder="Select user..." />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                    {usersLoading || usersFetching ? (
+                                        <div className="space-y-2 p-2">
+                                            {Array.from({ length: 5 }).map(
+                                                (_, i) => (
+                                                    <div
+                                                        key={i}
+                                                        className="flex items-center gap-2 w-full"
+                                                    >
+                                                        <Skeleton className="h-6 w-6 rounded-full" />
+                                                        <div className="space-y-1">
+                                                            <Skeleton className="h-3 w-32" />
+                                                            <Skeleton className="h-2 w-20" />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    ) : filteredUsers.length > 0 ? (
+                                        filteredUsers.map((u) => (
+                                            <SelectItem
+                                                key={u._id}
+                                                value={u._id}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-6 w-6">
+                                                        <AvatarImage
+                                                            src={u.image || ''}
+                                                            alt={
+                                                                u.firstName ||
+                                                                'User'
+                                                            }
+                                                        />
+                                                        <AvatarFallback>
+                                                            {u.firstName?.[0]?.toUpperCase() ||
+                                                                'U'}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium">
+                                                            {u.firstName}{' '}
+                                                            {u.lastName}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground capitalize">
+                                                            {u.role?.replace(
+                                                                /-/g,
+                                                                ' '
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                        ))
+                                    ) : (
+                                        <SelectItem value="no-users" disabled>
+                                            No users found
+                                        </SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </>
+                ) : (
+                    // Non-admin users: auto-assign themselves
+                    <input
+                        type="hidden"
+                        value={user?._id}
+                        onChange={() => {}}
+                    />
+                )}
 
                 {/* Country */}
                 <div className="grid gap-2">
@@ -250,13 +274,20 @@ export default function RootLeadCreateTaskPage() {
                         value={countryFilter}
                         onValueChange={setCountryFilter}
                     >
-                        <SelectTrigger id="country-select" className="w-full">
+                        <SelectTrigger
+                            id="country-select"
+                            className="w-full capitalize"
+                        >
                             <SelectValue placeholder="Country" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Countries</SelectItem>
                             {countries?.map((c) => (
-                                <SelectItem key={c.name} value={c.name}>
+                                <SelectItem
+                                    key={c.name}
+                                    value={c.name}
+                                    className="capitalize"
+                                >
                                     {c.name}
                                 </SelectItem>
                             ))}
@@ -416,15 +447,6 @@ export default function RootLeadCreateTaskPage() {
                                 {/* Emails */}
                                 <TableCell className="border text-xs">
                                     <div className="space-y-1">
-                                        {lead.company.emails?.map(
-                                            (email, i) => (
-                                                <p
-                                                    key={`co-email-${lead._id}-${i}`}
-                                                >
-                                                    {email}
-                                                </p>
-                                            )
-                                        )}
                                         {lead.contactPersons?.flatMap(
                                             (cp, ci) =>
                                                 cp.emails?.map((email, ei) => (
@@ -441,15 +463,6 @@ export default function RootLeadCreateTaskPage() {
                                 {/* Phones */}
                                 <TableCell className="border text-xs">
                                     <div className="space-y-1">
-                                        {lead.company.phones?.map(
-                                            (phone, i) => (
-                                                <p
-                                                    key={`co-phone-${lead._id}-${i}`}
-                                                >
-                                                    {phone}
-                                                </p>
-                                            )
-                                        )}
                                         {lead.contactPersons?.flatMap(
                                             (cp, ci) =>
                                                 cp.phones?.map((phone, pi) => (
@@ -569,7 +582,10 @@ export default function RootLeadCreateTaskPage() {
                 <Button
                     onClick={handleCreateTask}
                     disabled={
-                        creating || !selectedUser || selectedLeads.length === 0
+                        creating ||
+                        (!isAdmin && !user?._id) ||
+                        (isAdmin && !selectedUser) ||
+                        selectedLeads.length === 0
                     }
                     size="lg"
                 >

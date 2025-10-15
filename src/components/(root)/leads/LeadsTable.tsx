@@ -356,15 +356,6 @@ export default function LeadsTable() {
                                                     {/* Emails */}
                                                     <TableCell className="border text-xs truncate max-w-64">
                                                         <div className="space-y-1">
-                                                            {lead.company.emails?.map(
-                                                                (email, i) => (
-                                                                    <p
-                                                                        key={`co-email-${lead._id}-${i}`}
-                                                                    >
-                                                                        {email}
-                                                                    </p>
-                                                                )
-                                                            )}
                                                             {lead.contactPersons?.flatMap(
                                                                 (cp, ci) =>
                                                                     cp.emails?.map(
@@ -388,15 +379,6 @@ export default function LeadsTable() {
                                                     {/* Phones */}
                                                     <TableCell className="border text-xs truncate max-w-64">
                                                         <div className="space-y-1">
-                                                            {lead.company.phones?.map(
-                                                                (phone, i) => (
-                                                                    <p
-                                                                        key={`co-phone-${lead._id}-${i}`}
-                                                                    >
-                                                                        {phone}
-                                                                    </p>
-                                                                )
-                                                            )}
                                                             {lead.contactPersons?.flatMap(
                                                                 (cp, ci) =>
                                                                     cp.phones?.map(
@@ -436,9 +418,9 @@ export default function LeadsTable() {
                                                     {/* Status */}
                                                     <TableCell className="border capitalize">
                                                         {lead.status.replace(
-                                                                '_',
-                                                                ' '
-                                                            )}
+                                                            '_',
+                                                            ' '
+                                                        )}
                                                     </TableCell>
 
                                                     {/* Actions */}

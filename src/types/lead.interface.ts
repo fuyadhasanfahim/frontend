@@ -1,12 +1,10 @@
 export interface ICompany {
     name: string;
     website: string;
-    emails?: string[];
-    phones?: string[];
 }
 
 export interface IContactPerson {
-    firstName: string;
+    firstName?: string;
     lastName?: string;
     designation?: string;
     emails: string[];
@@ -68,7 +66,7 @@ export interface IActivity {
     result?: string;
 }
 
-export interface ILead {
+export interface ILead extends Document {
     _id: string;
     company: ICompany;
     address?: string;
