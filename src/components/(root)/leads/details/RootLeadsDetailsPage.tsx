@@ -114,14 +114,11 @@ export default function LeadDetailsPage() {
                         <p className="text-sm text-gray-500 mb-1">Emails</p>
                         <p className="text-base font-semibold">
                             {(() => {
-                                const companyEmails =
-                                    lead.company?.emails ?? [];
                                 const contactEmails =
                                     lead.contactPersons?.flatMap(
                                         (cp) => cp.emails
                                     ) ?? [];
                                 const uniqueEmails = new Set([
-                                    ...companyEmails,
                                     ...contactEmails,
                                 ]);
                                 return uniqueEmails.size;
@@ -135,14 +132,11 @@ export default function LeadDetailsPage() {
                         <p className="text-sm text-gray-500 mb-1">Phones</p>
                         <p className="text-base font-semibold">
                             {(() => {
-                                const companyPhones =
-                                    lead.company?.phones ?? [];
                                 const contactPhones =
                                     lead.contactPersons?.flatMap(
                                         (cp) => cp.phones
                                     ) ?? [];
                                 const uniquePhones = new Set([
-                                    ...companyPhones,
                                     ...contactPhones,
                                 ]);
                                 return uniquePhones.size;
@@ -177,22 +171,6 @@ export default function LeadDetailsPage() {
                             ) : (
                                 <span>N/A</span>
                             )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <IconMail className="h-4 w-4 text-gray-500" />
-                            <span>
-                                {lead.company?.emails?.length
-                                    ? lead.company.emails.join(', ')
-                                    : 'N/A'}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <IconPhone className="h-4 w-4 text-gray-500" />
-                            <span>
-                                {lead.company?.phones?.length
-                                    ? lead.company.phones.join(', ')
-                                    : 'N/A'}
-                            </span>
                         </div>
                         <div className="flex items-center gap-2">
                             <IconMapPin className="h-4 w-4 text-gray-500" />
