@@ -42,21 +42,23 @@ import { useSignedUser } from '@/hooks/useSignedUser';
 import { toast } from 'sonner';
 import { useParams } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { ChevronDownIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
 
-// ---------- Constants ----------
-const OUTCOME_OPTIONS: readonly {
-    value: IActivity['outcomeCode'];
-    label: string;
-}[] = [
-    { value: 'connected', label: 'Connected' },
-    { value: 'qualified', label: 'Qualified' },
-    { value: 'notQualified', label: 'Not Qualified' },
-    { value: 'callbackScheduled', label: 'Callback Scheduled' },
-    { value: 'won', label: 'Won' },
-    { value: 'lost', label: 'Lost' },
-    { value: 'noAnswer', label: 'No Answer' },
-    { value: 'unreachable', label: 'Unreachable' },
-];
+export const OUTCOME_LABELS: Record<IActivity['outcomeCode'], string> = {
+    interestedInfo: 'Interested - Wants More Info',
+    interestedQuotation: 'Interested - Wants Quotation',
+    noAnswer: 'No Answer / Missed',
+    notInterestedNow: 'Not Interested (Future Potential)',
+    invalidNumber: 'Invalid / Wrong Number',
+    existingClientFollowUp: 'Existing Client Follow-Up',
+    systemUpdate: 'System Update',
+};
 
 const CONTACT_CHANNELS: readonly {
     value: NonNullable<IActivity['contactedChannel']>;
@@ -68,7 +70,6 @@ const CONTACT_CHANNELS: readonly {
     { value: 'email', label: 'Email' },
 ];
 
-// ---------- Component ----------
 export default function RootTaskDetailsPage() {
     const { id } = useParams<{ id: string }>();
     const { user } = useSignedUser();
@@ -78,9 +79,11 @@ export default function RootTaskDetailsPage() {
     const [statusUpdateData, setStatusUpdateData] = useState<
         Partial<IActivity>
     >({
-        outcomeCode: 'connected',
+        outcomeCode: undefined,
         attemptNumber: 1,
+        dueAt: new Date(),
     });
+    const [open, setOpen] = useState(false);
 
     const { data, isLoading } = useGetTaskByIdQuery(id, { skip: !id });
     const [updateTaskWithLead, { isLoading: isUpdating }] =
@@ -89,48 +92,37 @@ export default function RootTaskDetailsPage() {
     const task: ITask | null = data?.task ?? null;
     const leads: ILead[] = data?.leads ?? [];
 
-    // ---------- Logic ----------
     const getStatusFromOutcome = (
         outcomeCode: IActivity['outcomeCode']
     ): ILead['status'] => {
         const map: Record<IActivity['outcomeCode'], ILead['status']> = {
-            connected: 'contacted',
-            qualified: 'qualified',
-            notQualified: 'contacted',
-            callbackScheduled: 'contacted',
-            needsDecisionMaker: 'contacted',
-            sendInfo: 'contacted',
-            negotiation: 'proposal',
-            won: 'won',
-            lost: 'lost',
+            interestedInfo: 'responded',
+            interestedQuotation: 'qualified',
             noAnswer: 'contacted',
-            voicemailLeft: 'contacted',
-            busy: 'contacted',
-            switchedOff: 'contacted',
-            invalidNumber: 'contacted',
-            wrongPerson: 'contacted',
-            dnd: 'contacted',
-            followUpScheduled: 'contacted',
-            followUpOverdue: 'contacted',
-            unreachable: 'contacted',
-            duplicate: 'onHold',
-            archived: 'onHold',
+            notInterestedNow: 'onHold',
+            invalidNumber: 'onHold',
+            existingClientFollowUp: 'contacted',
+            systemUpdate: 'new',
         };
+
         return map[outcomeCode] || 'contacted';
     };
 
     const handleStatusSelect = (lead: ILead) => {
         setSelectedLead(lead);
-        setStatusUpdateData({ outcomeCode: 'connected', attemptNumber: 1 });
+        setStatusUpdateData({
+            outcomeCode: undefined,
+            attemptNumber: (lead.activities?.length ?? 0) + 1,
+        });
         setIsDialogOpen(true);
     };
 
     const handleStatusUpdate = async () => {
-        if (!selectedLead || !task) return;
+        if (!selectedLead || !task || !statusUpdateData.outcomeCode) return;
 
         try {
             const newStatus = getStatusFromOutcome(
-                statusUpdateData.outcomeCode!
+                statusUpdateData.outcomeCode
             );
             const newDone = (task.metrics?.done ?? 0) + 1;
             const total = task.metrics?.total ?? 1;
@@ -147,12 +139,13 @@ export default function RootTaskDetailsPage() {
                     },
                     leadUpdates: { status: newStatus },
                     activity: {
-                        type: 'statusChange',
-                        outcomeCode: statusUpdateData.outcomeCode!,
+                        type: 'call',
+                        outcomeCode: statusUpdateData.outcomeCode,
                         contactedChannel: statusUpdateData.contactedChannel,
                         notes: statusUpdateData.notes,
                         byUser: user?._id as string,
                         at: new Date(),
+                        attemptNumber: statusUpdateData.attemptNumber ?? 1,
                         statusFrom: selectedLead.status,
                         statusTo: newStatus,
                     },
@@ -167,7 +160,6 @@ export default function RootTaskDetailsPage() {
         }
     };
 
-    // ---------- Render ----------
     if (isLoading)
         return (
             <div className="p-6 space-y-4">
@@ -206,7 +198,6 @@ export default function RootTaskDetailsPage() {
                         </p>
                     </div>
                     <div className="space-y-4">
-                        {/* Assigned To */}
                         <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage
@@ -228,7 +219,6 @@ export default function RootTaskDetailsPage() {
                             </div>
                         </div>
 
-                        {/* Created By */}
                         <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage
@@ -250,16 +240,15 @@ export default function RootTaskDetailsPage() {
                             </div>
                         </div>
 
-                        {/* Dates */}
                         <div className="text-sm space-y-1">
                             <p>
                                 <strong>Created At:</strong>{' '}
-                                {format(new Date(task.createdAt), 'PPP')}
+                                {format(task.createdAt, 'PPP')}
                             </p>
                             {task.finishedAt && (
                                 <p>
                                     <strong>Finished At:</strong>{' '}
-                                    {format(new Date(task.finishedAt), 'PPP')}
+                                    {format(task.finishedAt, 'PPP')}
                                 </p>
                             )}
                         </div>
@@ -294,6 +283,9 @@ export default function RootTaskDetailsPage() {
                                     Country
                                 </TableHead>
                                 <TableHead className="border">Status</TableHead>
+                                <TableHead className="border">
+                                    Outcome
+                                </TableHead>
                                 <TableHead className="border text-center">
                                     Action
                                 </TableHead>
@@ -303,7 +295,7 @@ export default function RootTaskDetailsPage() {
                             {leads.length ? (
                                 leads.map((lead) => (
                                     <TableRow key={lead._id}>
-                                        <TableCell className="border">
+                                        <TableCell className="border max-w-[200px] truncate">
                                             <p className="font-medium">
                                                 {lead.company.name}
                                             </p>
@@ -318,7 +310,7 @@ export default function RootTaskDetailsPage() {
                                                 </a>
                                             )}
                                         </TableCell>
-                                        <TableCell className="border">
+                                        <TableCell className="border max-w-[200px] truncate">
                                             {lead.contactPersons.length > 0
                                                 ? lead.contactPersons.map(
                                                       (cp, i) => (
@@ -331,57 +323,59 @@ export default function RootTaskDetailsPage() {
                                                 : '-'}
                                         </TableCell>
                                         <TableCell className="border text-xs">
-                                            {lead.contactPersons?.flatMap(
-                                                (cp, cpIndex) =>
-                                                    cp.emails?.map(
-                                                        (e, emailIndex) => (
-                                                            <p
-                                                                key={`cp-${cpIndex}-email-${emailIndex}`}
-                                                            >
-                                                                {e}
-                                                            </p>
-                                                        )
-                                                    )
+                                            {lead.contactPersons.flatMap(
+                                                (cp, i) =>
+                                                    cp.emails?.map((e, j) => (
+                                                        <p
+                                                            key={`cp-${i}-email-${j}`}
+                                                        >
+                                                            {e}
+                                                        </p>
+                                                    ))
                                             )}
                                         </TableCell>
                                         <TableCell className="border text-xs">
-                                            {lead.contactPersons?.flatMap(
-                                                (cp, cpIndex) =>
-                                                    cp.phones?.map(
-                                                        (p, phoneIndex) => (
-                                                            <p
-                                                                key={`cp-${cpIndex}-phone-${phoneIndex}`}
-                                                            >
-                                                                {p}
-                                                            </p>
-                                                        )
-                                                    )
+                                            {lead.contactPersons.flatMap(
+                                                (cp, i) =>
+                                                    cp.phones?.map((p, j) => (
+                                                        <p
+                                                            key={`cp-${i}-phone-${j}`}
+                                                        >
+                                                            {p}
+                                                        </p>
+                                                    ))
                                             )}
                                         </TableCell>
                                         <TableCell className="border">
-                                            {lead.contactPersons.length > 0
-                                                ? lead.contactPersons.map(
-                                                      (cp, i) => (
-                                                          <p
-                                                              key={`cp-des-${i}`}
-                                                          >
-                                                              {cp.designation ||
-                                                                  '-'}
-                                                          </p>
-                                                      )
-                                                  )
-                                                : '-'}
+                                            {lead.contactPersons.map(
+                                                (cp, i) => (
+                                                    <p key={`cp-des-${i}`}>
+                                                        {cp.designation || '-'}
+                                                    </p>
+                                                )
+                                            )}
                                         </TableCell>
-                                        <TableCell className="border">
+                                        <TableCell className="border max-w-[100px] truncate">
                                             {lead.address || '-'}
                                         </TableCell>
                                         <TableCell className="border capitalize">
                                             {lead.country}
                                         </TableCell>
+                                        <TableCell className="border capitalize max-w-[200px] truncate">
+                                            {lead.status}
+                                        </TableCell>
                                         <TableCell className="border capitalize">
-                                            <Badge variant="outline">
-                                                {lead.status}
-                                            </Badge>
+                                            {lead.activities?.map((a, i) => (
+                                                <p
+                                                    key={`outcome-${lead._id}-${i}`}
+                                                >
+                                                    {
+                                                        OUTCOME_LABELS[
+                                                            a.outcomeCode as keyof typeof OUTCOME_LABELS
+                                                        ]
+                                                    }
+                                                </p>
+                                            )) || 'N/A'}
                                         </TableCell>
                                         <TableCell className="border text-center">
                                             <Button
@@ -399,7 +393,7 @@ export default function RootTaskDetailsPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={9}
+                                        colSpan={10}
                                         className="text-center py-10 text-gray-500 border"
                                     >
                                         No leads found for this task.
@@ -429,13 +423,11 @@ export default function RootTaskDetailsPage() {
                             handleStatusUpdate();
                         }}
                     >
-                        {/* Outcome */}
+                        {/* 🟢 Outcome */}
                         <div className="space-y-3">
                             <Label>Outcome *</Label>
                             <Select
-                                value={
-                                    statusUpdateData.outcomeCode || 'connected'
-                                }
+                                value={statusUpdateData.outcomeCode || ''}
                                 onValueChange={(v) =>
                                     setStatusUpdateData((p) => ({
                                         ...p,
@@ -448,19 +440,21 @@ export default function RootTaskDetailsPage() {
                                     <SelectValue placeholder="Select outcome" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {OUTCOME_OPTIONS.map((opt) => (
-                                        <SelectItem
-                                            key={opt.value}
-                                            value={opt.value}
-                                        >
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
+                                    {Object.entries(OUTCOME_LABELS).map(
+                                        ([value, label]) => (
+                                            <SelectItem
+                                                key={value}
+                                                value={value}
+                                            >
+                                                {label}
+                                            </SelectItem>
+                                        )
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Contact Channel */}
+                        {/* 🟠 Contact Channel */}
                         <div className="space-y-3">
                             <Label>Contact Channel</Label>
                             <Select
@@ -489,7 +483,156 @@ export default function RootTaskDetailsPage() {
                             </Select>
                         </div>
 
-                        {/* Notes */}
+                        {/* 🧭 Next Action */}
+                        <div className="space-y-3">
+                            <Label>Next Action</Label>
+                            <Select
+                                value={statusUpdateData.nextAction || ''}
+                                onValueChange={(v) =>
+                                    setStatusUpdateData((p) => ({
+                                        ...p,
+                                        nextAction:
+                                            v as IActivity['nextAction'],
+                                    }))
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select next action" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="sendProposal">
+                                        Send Proposal
+                                    </SelectItem>
+                                    <SelectItem value="followUp">
+                                        Follow Up
+                                    </SelectItem>
+                                    <SelectItem value="retry">Retry</SelectItem>
+                                    <SelectItem value="enrichContact">
+                                        Enrich Contact
+                                    </SelectItem>
+                                    <SelectItem value="scheduleMeeting">
+                                        Schedule Meeting
+                                    </SelectItem>
+                                    <SelectItem value="closeLost">
+                                        Close as Lost
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-3">
+                            <Label htmlFor="dueAt" className="px-1">
+                                Follow-up Date
+                            </Label>
+                            <Popover open={open} onOpenChange={setOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        id="dueAt"
+                                        className="w-auto justify-between font-normal"
+                                    >
+                                        {statusUpdateData.dueAt
+                                            ? format(
+                                                  statusUpdateData.dueAt,
+                                                  'PPP'
+                                              )
+                                            : 'Select date'}
+                                        <ChevronDownIcon />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    className="w-auto overflow-hidden p-0"
+                                    align="start"
+                                >
+                                    <Calendar
+                                        mode="single"
+                                        selected={statusUpdateData.dueAt}
+                                        captionLayout="dropdown"
+                                        onSelect={(date) => {
+                                            setStatusUpdateData((p) => ({
+                                                ...p,
+                                                dueAt: date,
+                                            }));
+                                            setOpen(false);
+                                        }}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
+                        {/* 💬 Duration */}
+                        <div className="space-y-3">
+                            <Label>Call Duration (seconds)</Label>
+                            <input
+                                type="text"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                                placeholder="e.g., 180"
+                                value={statusUpdateData.durationSec || ''}
+                                onChange={(e) =>
+                                    setStatusUpdateData((p) => ({
+                                        ...p,
+                                        durationSec: Number(e.target.value),
+                                    }))
+                                }
+                            />
+                        </div>
+
+                        {/* 🔢 Attempt Number */}
+                        <div className="space-y-3">
+                            <Label>Attempt #</Label>
+                            <input
+                                type="text"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                                value={statusUpdateData.attemptNumber || 1}
+                                onChange={(e) =>
+                                    setStatusUpdateData((p) => ({
+                                        ...p,
+                                        attemptNumber: Number(e.target.value),
+                                    }))
+                                }
+                            />
+                        </div>
+
+                        {/* 🚫 Lost Reason (only when outcome = notInterestedNow) */}
+                        {statusUpdateData.outcomeCode ===
+                            'notInterestedNow' && (
+                            <div className="col-span-2 space-y-3">
+                                <Label>Lost Reason</Label>
+                                <Select
+                                    value={statusUpdateData.lostReason || ''}
+                                    onValueChange={(v) =>
+                                        setStatusUpdateData((p) => ({
+                                            ...p,
+                                            lostReason:
+                                                v as IActivity['lostReason'],
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select reason" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="noBudget">
+                                            No Budget
+                                        </SelectItem>
+                                        <SelectItem value="notInterested">
+                                            Not Interested
+                                        </SelectItem>
+                                        <SelectItem value="timing">
+                                            Bad Timing
+                                        </SelectItem>
+                                        <SelectItem value="competitor">
+                                            Chose Competitor
+                                        </SelectItem>
+                                        <SelectItem value="other">
+                                            Other
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        {/* 📝 Notes */}
                         <div className="col-span-2 space-y-3">
                             <Label>Notes</Label>
                             <Textarea
@@ -505,7 +648,6 @@ export default function RootTaskDetailsPage() {
                             />
                         </div>
 
-                        {/* Footer inside form */}
                         <DialogFooter className="col-span-2 mt-2">
                             <Button
                                 type="button"

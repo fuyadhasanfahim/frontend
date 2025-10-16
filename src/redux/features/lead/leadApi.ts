@@ -19,6 +19,7 @@ export const leadApi = apiSlice.injectEndpoints({
                 sortBy,
                 sortOrder,
                 country,
+                outcome,
             }) => ({
                 url: '/leads/get-leads',
                 method: 'GET',
@@ -30,6 +31,7 @@ export const leadApi = apiSlice.injectEndpoints({
                     sortBy,
                     sortOrder,
                     country,
+                    outcome,
                 },
             }),
             providesTags: ['Leads'],

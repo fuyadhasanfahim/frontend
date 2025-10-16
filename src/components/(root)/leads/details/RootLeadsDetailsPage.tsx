@@ -20,6 +20,7 @@ import {
 } from '@tabler/icons-react';
 import type { ILead } from '@/types/lead.interface';
 import { format } from 'date-fns';
+import { OUTCOME_LABELS } from '../../tasks/details/RootTaskDetailsPage';
 
 export default function LeadDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -252,10 +253,18 @@ export default function LeadDetailsPage() {
                                 >
                                     <div className="flex justify-between">
                                         <span className="font-medium capitalize">
-                                            {a.type} – {a.outcomeCode}
+                                            {a.type} –{' '}
+                                            {lead.activities
+                                                ?.map(
+                                                    (a) =>
+                                                        OUTCOME_LABELS[
+                                                            a.outcomeCode as keyof typeof OUTCOME_LABELS
+                                                        ]
+                                                )
+                                                .join(', ')}
                                         </span>
                                         <span className="text-xs text-gray-500">
-                                            {format(new Date(a.at), 'PPP, p')}
+                                            {format(a.at, 'PPP, p')}
                                         </span>
                                     </div>
                                     {a.notes && (

@@ -57,6 +57,17 @@ const STATUS_TABS = [
     'onHold',
 ] as const;
 
+const OUTCOME_LABELS: Record<string, string> = {
+    all: 'All',
+    interestedInfo: 'Interested - Wants More Info',
+    interestedQuotation: 'Interested - Wants Quotation',
+    noAnswer: 'No Answer / Missed',
+    notInterestedNow: 'Not Interested (Future Potential)',
+    invalidNumber: 'Invalid / Wrong Number',
+    existingClientFollowUp: 'Existing Client Follow-Up',
+    systemUpdate: 'System Update',
+};
+
 export default function LeadsTable() {
     const [search, setSearch] = useState('');
     const [countryFilter, setCountryFilter] = useState<string>('all');
@@ -64,6 +75,9 @@ export default function LeadsTable() {
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
     const [status, setStatus] = useState<string>('all');
+    const [outcome, setOutcome] = useState<keyof typeof OUTCOME_LABELS | ''>(
+        'all'
+    );
 
     const { data: countries } = useGetCountriesQuery({});
 
@@ -99,6 +113,7 @@ export default function LeadsTable() {
         sortBy,
         sortOrder,
         status,
+        outcome,
     });
 
     const leads = data?.data ?? [];
@@ -145,7 +160,32 @@ export default function LeadsTable() {
                                 />
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="flex items-center gap-3">
+                                <Select
+                                    value={outcome}
+                                    onValueChange={(val) =>
+                                        setOutcome(
+                                            val as keyof typeof OUTCOME_LABELS
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger className="w-[170px] border-gray-300">
+                                        <SelectValue placeholder="Outcome" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Object.entries(OUTCOME_LABELS).map(
+                                            ([value, label]) => (
+                                                <SelectItem
+                                                    key={value}
+                                                    value={value}
+                                                >
+                                                    {label}
+                                                </SelectItem>
+                                            )
+                                        )}
+                                    </SelectContent>
+                                </Select>
+
                                 {/* Sort */}
                                 <Select
                                     value={sort}
@@ -268,6 +308,9 @@ export default function LeadsTable() {
                                         <TableHead className="border">
                                             Status
                                         </TableHead>
+                                        <TableHead className="border">
+                                            Outcome
+                                        </TableHead>
                                         <TableHead className="border text-center">
                                             Actions
                                         </TableHead>
@@ -280,7 +323,7 @@ export default function LeadsTable() {
                                             (_, i) => (
                                                 <TableRow key={i}>
                                                     {Array.from({
-                                                        length: 10,
+                                                        length: 11,
                                                     }).map((__, j) => (
                                                         <TableCell
                                                             key={j}
@@ -295,7 +338,7 @@ export default function LeadsTable() {
                                     ) : isError ? (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={10}
+                                                colSpan={11}
                                                 className="text-center py-12 text-destructive border"
                                             >
                                                 Failed to load leads
@@ -316,12 +359,12 @@ export default function LeadsTable() {
                                             return (
                                                 <TableRow key={lead._id}>
                                                     {/* Company */}
-                                                    <TableCell className="border font-medium">
+                                                    <TableCell className="border font-medium max-w-[200px] truncate">
                                                         {lead.company.name}
                                                     </TableCell>
 
                                                     {/* Website */}
-                                                    <TableCell className="border text-blue-600 underline">
+                                                    <TableCell className="border text-blue-600 underline max-w-[200px] truncate">
                                                         {lead.company
                                                             .website ? (
                                                             <Link
@@ -406,7 +449,7 @@ export default function LeadsTable() {
                                                     </TableCell>
 
                                                     {/* Address */}
-                                                    <TableCell className="border capitalize">
+                                                    <TableCell className="border capitalize max-w-[200px] truncate">
                                                         {lead.address || 'N/A'}
                                                     </TableCell>
 
@@ -421,6 +464,21 @@ export default function LeadsTable() {
                                                             '_',
                                                             ' '
                                                         )}
+                                                    </TableCell>
+                                                    <TableCell className="border capitalize">
+                                                        {lead.activities?.map(
+                                                            (a, i) => (
+                                                                <p
+                                                                    key={`outcome-${lead._id}-${i}`}
+                                                                >
+                                                                    {
+                                                                        OUTCOME_LABELS[
+                                                                            a.outcomeCode as keyof typeof OUTCOME_LABELS
+                                                                        ]
+                                                                    }
+                                                                </p>
+                                                            )
+                                                        ) || 'N/A'}
                                                     </TableCell>
 
                                                     {/* Actions */}
