@@ -33,6 +33,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { IconPlus } from '@tabler/icons-react';
 
 export default function RootTaskPage() {
     const { user } = useSignedUser();
@@ -68,7 +69,18 @@ export default function RootTaskPage() {
 
             <CardContent className="space-y-6">
                 <div className="w-full">
-                    <div className="flex justify-end">
+                    <div className="flex gap-4 items-center justify-end">
+                        <Link
+                            href={'/tasks/create-task'}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <Button variant={'outline'}>
+                                <IconPlus />
+                                Create Task
+                            </Button>
+                        </Link>
+
                         <Select
                             value={String(limit)}
                             onValueChange={(val) => {

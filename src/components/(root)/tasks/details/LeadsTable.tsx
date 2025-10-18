@@ -26,7 +26,8 @@ export default function LeadsTable({
             <TableHeader className="bg-accent">
                 <TableRow>
                     <TableHead className="border">Company</TableHead>
-                    <TableHead className="border">Contact Person</TableHead>
+                    <TableHead className="border">Website</TableHead>
+                    <TableHead className="border">Full Name</TableHead>
                     <TableHead className="border">Emails</TableHead>
                     <TableHead className="border">Phones</TableHead>
                     <TableHead className="border">Designation</TableHead>
@@ -42,77 +43,102 @@ export default function LeadsTable({
                 {leads.length ? (
                     leads.map((lead) => (
                         <TableRow key={lead._id}>
-                            <TableCell className="border max-w-[200px] truncate">
-                                <p className="font-medium">
-                                    {lead.company.name}
-                                </p>
-                                {lead.company.website && (
+                            <TableCell className="border font-medium max-w-[200px] truncate">
+                                {lead.company.name}
+                            </TableCell>
+
+                            {/* Website */}
+                            <TableCell className="border text-blue-600 underline max-w-[200px] truncate">
+                                {lead.company.website ? (
                                     <Link
-                                        href={lead.company.website}
+                                        href={
+                                            lead.company.website.startsWith(
+                                                'http'
+                                            )
+                                                ? lead.company.website
+                                                : `https://${lead.company.website}`
+                                        }
                                         target="_blank"
-                                        rel="noreferrer"
-                                        className="text-blue-600 text-xs underline"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-blue-700"
                                     >
                                         {lead.company.website}
                                     </Link>
+                                ) : (
+                                    'N/A'
                                 )}
                             </TableCell>
-                            <TableCell className="border max-w-[200px] truncate">
-                                {lead.contactPersons.length > 0
-                                    ? lead.contactPersons.map((cp, i) => (
-                                          <p key={i}>
-                                              {cp.firstName} {cp.lastName}
-                                          </p>
-                                      ))
-                                    : '-'}
-                            </TableCell>
-                            <TableCell className="border text-xs">
-                                {lead.contactPersons.flatMap((cp, i) =>
-                                    cp.emails?.map((e, j) => (
-                                        <p key={`cp-${i}-email-${j}`}>{e}</p>
-                                    ))
-                                )}
-                            </TableCell>
-                            <TableCell className="border text-xs">
-                                {lead.contactPersons.flatMap((cp, i) =>
-                                    cp.phones?.map((p, j) => (
-                                        <p key={`cp-${i}-phone-${j}`}>{p}</p>
-                                    ))
-                                )}
-                            </TableCell>
-                            <TableCell className="border">
-                                {lead.contactPersons.map((cp, i) => (
-                                    <p key={`cp-des-${i}`}>
-                                        {cp.designation || '-'}
-                                    </p>
-                                ))}
-                            </TableCell>
-                            <TableCell className="border max-w-[100px] truncate">
-                                {lead.address || '-'}
-                            </TableCell>
+
+                            {/* Full Name */}
                             <TableCell className="border capitalize">
-                                {lead.country}
+                                {lead.contactPersons[0].firstName}{' '}
+                                {lead.contactPersons[0].lastName}
                             </TableCell>
-                            <TableCell className="border capitalize max-w-[200px] truncate">
-                                {lead.status}
+
+                            {/* Emails */}
+                            <TableCell className="border truncate max-w-[200px]">
+                                <div className="space-y-1">
+                                    {lead.contactPersons?.flatMap((cp, ci) =>
+                                        cp.emails?.map((email, ei) => (
+                                            <p
+                                                key={`cp-email-${lead._id}-${ci}-${ei}`}
+                                            >
+                                                {email}
+                                            </p>
+                                        ))
+                                    )}
+                                </div>
                             </TableCell>
+
+                            {/* Phones */}
+                            <TableCell className="border truncate max-w-[200px]">
+                                <div className="space-y-1">
+                                    {lead.contactPersons?.flatMap((cp, ci) =>
+                                        cp.phones?.map((phone, pi) => (
+                                            <p
+                                                key={`cp-phone-${lead._id}-${ci}-${pi}`}
+                                            >
+                                                {phone}
+                                            </p>
+                                        ))
+                                    )}
+                                </div>
+                            </TableCell>
+
+                            {/* Designation */}
+                            <TableCell className="border truncate max-w-[200px] capitalize">
+                                {lead.contactPersons[0]?.designation || 'N/A'}
+                            </TableCell>
+
+                            {/* Address */}
+                            <TableCell className="border max-w-[200px] truncate capitalize">
+                                {lead.address || 'N/A'}
+                            </TableCell>
+
+                            {/* Country */}
                             <TableCell className="border capitalize">
-                                {lead.activities?.map((a, i) => (
-                                    <p key={`outcome-${lead._id}-${i}`}>
-                                        {
-                                            OUTCOME_LABELS[
-                                                a.outcomeCode as keyof typeof OUTCOME_LABELS
-                                            ]
-                                        }
-                                    </p>
-                                )) || 'N/A'}
+                                {lead.country || 'N/A'}
+                            </TableCell>
+
+                            {/* Status */}
+                            <TableCell className="border capitalize">
+                                {lead.status.replace('_', ' ')}
+                            </TableCell>
+                            <TableCell className="border capitalize truncate max-w-[200px]">
+                                {lead.activities && lead.activities?.length > 0
+                                    ? lead.activities?.map(
+                                          (a) =>
+                                              OUTCOME_LABELS[
+                                                  a.outcomeCode as keyof typeof OUTCOME_LABELS
+                                              ]
+                                      )
+                                    : 'N/A'}
                             </TableCell>
                             <TableCell className="border max-w-[200px] truncate">
                                 {lead.notes || 'N/A'}
                             </TableCell>
                             <TableCell className="border text-center">
                                 <Button
-                                    size="sm"
                                     variant="link"
                                     onClick={() => handleStatusSelect(lead)}
                                 >

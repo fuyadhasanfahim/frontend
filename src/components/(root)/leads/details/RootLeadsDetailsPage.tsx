@@ -17,6 +17,9 @@ import {
     IconUser,
     IconNotebook,
     IconEdit,
+    IconArrowRight,
+    IconNote,
+    IconInfoCircle,
 } from '@tabler/icons-react';
 import type { ILead } from '@/types/lead.interface';
 import { format } from 'date-fns';
@@ -65,21 +68,18 @@ export default function LeadDetailsPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2 mt-4 sm:mt-0">
-                    <Badge
-                        variant="secondary"
-                        className="capitalize text-xs font-medium px-3 py-1"
-                    >
+                    <Badge className="capitalize">
                         {lead.status.replace('_', ' ')}
                     </Badge>
                     <div className="flex items-center gap-2">
                         <Link href="/leads">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline">
                                 <IconArrowLeft className="h-4 w-4 mr-1" />
                                 Back
                             </Button>
                         </Link>
                         <Link href={`/leads/edit/${id}`}>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline">
                                 <IconEdit className="h-4 w-4 mr-1" />
                                 Edit
                             </Button>
@@ -87,6 +87,43 @@ export default function LeadDetailsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* --- Lead Overview --- */}
+            <Card className="mb-8 shadow-sm border border-gray-200 rounded-xl">
+                <CardHeader className="flex items-center gap-2">
+                    <IconInfoCircle className="h-5 w-5 text-sky-500" />
+                    <CardTitle className="text-lg font-medium">
+                        Lead Overview
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-gray-700 space-y-3">
+                    <div className="flex items-start gap-2">
+                        <IconNote className="h-4 w-4 text-gray-500 mt-0.5" />
+                        <div>
+                            <p className="text-gray-500 font-medium mb-1">
+                                Notes
+                            </p>
+                            <p className="text-gray-800 whitespace-pre-wrap">
+                                {lead.notes?.trim()
+                                    ? lead.notes
+                                    : 'No notes available for this lead.'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <IconNotebook className="h-4 w-4 text-gray-500" />
+                        <span className="text-gray-500 font-medium">
+                            Status:
+                        </span>
+                        <Badge
+                            variant="secondary"
+                            className="capitalize font-semibold"
+                        >
+                            {lead.status}
+                        </Badge>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* --- Overview Stats --- */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
@@ -119,9 +156,7 @@ export default function LeadDetailsPage() {
                                     lead.contactPersons?.flatMap(
                                         (cp) => cp.emails
                                     ) ?? [];
-                                const uniqueEmails = new Set([
-                                    ...contactEmails,
-                                ]);
+                                const uniqueEmails = new Set(contactEmails);
                                 return uniqueEmails.size;
                             })()}
                         </p>
@@ -137,9 +172,7 @@ export default function LeadDetailsPage() {
                                     lead.contactPersons?.flatMap(
                                         (cp) => cp.phones
                                     ) ?? [];
-                                const uniquePhones = new Set([
-                                    ...contactPhones,
-                                ]);
+                                const uniquePhones = new Set(contactPhones);
                                 return uniquePhones.size;
                             })()}
                         </p>
@@ -235,7 +268,7 @@ export default function LeadDetailsPage() {
                 </Card>
             </div>
 
-            {/* --- Activities --- */}
+            {/* --- Activities Section --- */}
             <Card className="mt-6 shadow-sm border border-gray-200 rounded-xl">
                 <CardHeader className="flex items-center gap-2">
                     <IconNotebook className="h-5 w-5 text-amber-500" />
@@ -245,35 +278,69 @@ export default function LeadDetailsPage() {
                 </CardHeader>
                 <CardContent className="text-sm text-gray-700">
                     {lead.activities?.length ? (
-                        <ul className="space-y-3">
-                            {lead.activities.map((a, i) => (
-                                <li
-                                    key={i}
-                                    className="border-l-2 border-gray-200 pl-3"
-                                >
-                                    <div className="flex justify-between">
-                                        <span className="font-medium capitalize">
-                                            {a.type} –{' '}
-                                            {lead.activities
-                                                ?.map(
-                                                    (a) =>
-                                                        OUTCOME_LABELS[
-                                                            a.outcomeCode as keyof typeof OUTCOME_LABELS
-                                                        ]
-                                                )
-                                                .join(', ')}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                            {format(a.at, 'PPP, p')}
-                                        </span>
-                                    </div>
-                                    {a.notes && (
-                                        <p className="text-gray-600 mt-1">
-                                            {a.notes}
-                                        </p>
-                                    )}
-                                </li>
-                            ))}
+                        <ul className="space-y-4">
+                            {lead.activities.map((a, i) => {
+                                const outcomeLabel =
+                                    OUTCOME_LABELS[
+                                        a.outcomeCode as keyof typeof OUTCOME_LABELS
+                                    ] || '—';
+
+                                const hasStatusChange =
+                                    a.statusFrom || a.statusTo
+                                        ? a.statusFrom !== a.statusTo
+                                        : false;
+
+                                return (
+                                    <li
+                                        key={i}
+                                        className="border-l-2 border-gray-200 pl-3 pb-2"
+                                    >
+                                        {/* Header Row */}
+                                        <div className="flex justify-between items-start">
+                                            <div className="font-medium capitalize flex items-center gap-2">
+                                                <span>{a.type}</span>
+                                                {a.outcomeCode && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="capitalize"
+                                                    >
+                                                        {outcomeLabel}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-gray-500">
+                                                {a.at
+                                                    ? format(a.at, 'PPP, p')
+                                                    : '—'}
+                                            </span>
+                                        </div>
+
+                                        {/* Notes */}
+                                        <div className="mt-1">
+                                            <p className="text-gray-600">
+                                                {a.notes?.trim()
+                                                    ? a.notes
+                                                    : a.content?.trim()
+                                                    ? a.content
+                                                    : 'No notes recorded.'}
+                                            </p>
+                                        </div>
+
+                                        {/* Status Change */}
+                                        {hasStatusChange && (
+                                            <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                                                <span className="capitalize font-medium text-gray-600">
+                                                    {a.statusFrom || 'N/A'}
+                                                </span>
+                                                <IconArrowRight className="h-3 w-3" />
+                                                <span className="capitalize font-medium text-gray-800">
+                                                    {a.statusTo || 'N/A'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     ) : (
                         <p className="text-gray-500">

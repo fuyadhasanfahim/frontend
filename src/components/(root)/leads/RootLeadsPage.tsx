@@ -18,7 +18,7 @@ export default function ImportLeadsCard() {
                         target="_blank"
                         rel="noreferrer"
                     >
-                        <Button variant="outline" size={'sm'}>
+                        <Button variant="outline">
                             <IconPlus />
                             Create Task
                         </Button>
@@ -28,7 +28,7 @@ export default function ImportLeadsCard() {
                         target="_blank"
                         rel="noreferrer"
                     >
-                        <Button variant="outline" size={'sm'}>
+                        <Button variant="outline">
                             <IconPlus />
                             New Leads
                         </Button>

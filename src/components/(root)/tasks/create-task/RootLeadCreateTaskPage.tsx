@@ -21,7 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDownIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetCountriesQuery } from '@/redux/features/country/countryApi';
 import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
@@ -30,8 +30,15 @@ import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
 import { useSignedUser } from '@/hooks/useSignedUser';
 import { ILead } from '@/types/lead.interface';
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import Link from 'next/link';
 
-// ---------- Types ----------
 interface IUser {
     _id: string;
     firstName: string;
@@ -54,6 +61,30 @@ const ROLES = [
     'graphic-designer',
 ] as const;
 
+const OUTCOME_LABELS: Record<string, string> = {
+    all: 'All',
+    interestedInfo: 'Interested - Wants More Info',
+    interestedQuotation: 'Interested - Wants Quotation',
+    noAnswer: 'No Answer / Missed',
+    notInterestedNow: 'Not Interested (Future Potential)',
+    invalidNumber: 'Invalid / Wrong Number',
+    existingClientFollowUp: 'Existing Client Follow-Up',
+    systemUpdate: 'System Update',
+};
+
+const STATUS_TABS = [
+    'all',
+    'new',
+    'contacted',
+    'responded',
+    'qualified',
+    'meetingScheduled',
+    'proposal',
+    'won',
+    'lost',
+    'onHold',
+] as const;
+
 export default function RootLeadCreateTaskPage() {
     const { user, isLoading: userLoading } = useSignedUser();
 
@@ -63,7 +94,13 @@ export default function RootLeadCreateTaskPage() {
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
     const [countryFilter, setCountryFilter] = useState('all');
+    const [status, setStatus] = useState<string>('all');
     const [sort, setSort] = useState<SortOption>('companyAsc');
+    const [outcome, setOutcome] = useState<keyof typeof OUTCOME_LABELS | ''>(
+        'all'
+    );
+    const [open, setOpen] = useState(false);
+    const [date, setDate] = useState<Date | undefined>(undefined);
 
     const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
 
@@ -74,13 +111,19 @@ export default function RootLeadCreateTaskPage() {
         isFetching: usersFetching,
     } = useGetAllUsersQuery(undefined);
 
-    const { data, isLoading: leadsLoading } = useGetLeadsQuery({
+    const {
+        data,
+        isLoading: leadsLoading,
+        isFetching,
+    } = useGetLeadsQuery({
         page,
         limit: perPage,
         country: countryFilter,
         sortBy: sort.includes('company') ? 'company.name' : 'country',
         sortOrder: sort.endsWith('Asc') ? 'asc' : 'desc',
-        status: 'new',
+        status,
+        date: date ? date.toISOString().split('T')[0] : '',
+        outcome,
     });
 
     const leads = data?.data ?? [];
@@ -151,7 +194,7 @@ export default function RootLeadCreateTaskPage() {
             </h2>
 
             {/* Filters */}
-            <div className="grid grid-cols-5 items-center gap-6">
+            <div className="grid grid-cols-8 items-center gap-4">
                 {/* Role & User (only visible to admin/super-admin) */}
                 {isAdmin ? (
                     <>
@@ -239,7 +282,7 @@ export default function RootLeadCreateTaskPage() {
                                                             {u.firstName}{' '}
                                                             {u.lastName}
                                                         </span>
-                                                        <span className="text-xs text-muted-foreground capitalize">
+                                                        <span className="text-muted-foreground capitalize">
                                                             {u.role?.replace(
                                                                 /-/g,
                                                                 ' '
@@ -259,8 +302,7 @@ export default function RootLeadCreateTaskPage() {
                         </div>
                     </>
                 ) : (
-                    // Non-admin users: auto-assign themselves
-                    <input
+                    <Input
                         type="hidden"
                         value={user?._id}
                         onChange={() => {}}
@@ -291,6 +333,89 @@ export default function RootLeadCreateTaskPage() {
                                     {c.name}
                                 </SelectItem>
                             ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="date" className="px-1">
+                        Date
+                    </Label>
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                id="date"
+                                className="w-auto justify-between font-normal"
+                            >
+                                {date
+                                    ? date.toLocaleDateString()
+                                    : 'Select date'}
+                                <ChevronDownIcon />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            className="w-auto overflow-hidden p-0"
+                            align="start"
+                        >
+                            <Calendar
+                                mode="single"
+                                selected={date}
+                                captionLayout="dropdown"
+                                onSelect={(date) => {
+                                    setDate(date);
+                                    setOpen(false);
+                                }}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="status">Status:</Label>
+                    <Select
+                        value={status}
+                        onValueChange={(val) => setStatus(val)}
+                    >
+                        <SelectTrigger
+                            id="status"
+                            className="w-full border-gray-300 capitalize"
+                        >
+                            <SelectValue placeholder="Outcome" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {STATUS_TABS.map((s) => (
+                                <SelectItem
+                                    key={s}
+                                    value={s}
+                                    className="capitalize"
+                                >
+                                    {s}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="outcome">Outcome:</Label>
+                    <Select
+                        value={outcome}
+                        onValueChange={(val) =>
+                            setOutcome(val as keyof typeof OUTCOME_LABELS)
+                        }
+                    >
+                        <SelectTrigger id="outcome" className="max-w-40 w-full">
+                            <SelectValue placeholder="Outcome" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Object.entries(OUTCOME_LABELS).map(
+                                ([value, label]) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                )
+                            )}
                         </SelectContent>
                     </Select>
                 </div>
@@ -360,21 +485,24 @@ export default function RootLeadCreateTaskPage() {
                             />
                         </TableHead>
                         <TableHead className="border">Company</TableHead>
-                        <TableHead className="border">Contact Person</TableHead>
+                        <TableHead className="border">Website</TableHead>
+                        <TableHead className="border">Full Name</TableHead>
                         <TableHead className="border">Emails</TableHead>
                         <TableHead className="border">Phones</TableHead>
                         <TableHead className="border">Designation</TableHead>
                         <TableHead className="border">Address</TableHead>
                         <TableHead className="border">Country</TableHead>
                         <TableHead className="border">Status</TableHead>
+                        <TableHead className="border">Outcome</TableHead>
+                        <TableHead className="border">Notes</TableHead>
                     </TableRow>
                 </TableHeader>
 
                 <TableBody>
-                    {leadsLoading ? (
+                    {leadsLoading || isFetching ? (
                         Array.from({ length: perPage }).map((_, i) => (
                             <TableRow key={i}>
-                                {Array.from({ length: 9 }).map((__, j) => (
+                                {Array.from({ length: 12 }).map((__, j) => (
                                     <TableCell key={j} className="border">
                                         <Skeleton className="h-4 w-24 mx-auto" />
                                     </TableCell>
@@ -398,54 +526,40 @@ export default function RootLeadCreateTaskPage() {
                                 </TableCell>
 
                                 {/* Company */}
-                                <TableCell className="border">
-                                    <div>
-                                        <p className="font-medium">
-                                            {lead.company.name}
-                                        </p>
-                                        {lead.company.website && (
-                                            <a
-                                                href={
-                                                    lead.company.website.startsWith(
-                                                        'http'
-                                                    )
-                                                        ? lead.company.website
-                                                        : `https://${lead.company.website}`
-                                                }
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="text-xs text-blue-600 underline break-all"
-                                            >
-                                                {lead.company.website}
-                                            </a>
-                                        )}
-                                    </div>
+                                <TableCell className="border font-medium max-w-[200px] truncate">
+                                    {lead.company.name}
                                 </TableCell>
 
-                                {/* Contact Person */}
-                                <TableCell className="border">
-                                    {lead.contactPersons?.length ? (
-                                        <div className="space-y-1 text-sm">
-                                            {lead.contactPersons.map(
-                                                (cp, i) => (
-                                                    <div
-                                                        key={`cp-${lead._id}-${i}`}
-                                                    >
-                                                        <p className="font-medium">
-                                                            {cp.firstName}{' '}
-                                                            {cp.lastName || ''}
-                                                        </p>
-                                                    </div>
+                                {/* Website */}
+                                <TableCell className="border text-blue-600 underline max-w-[200px] truncate">
+                                    {lead.company.website ? (
+                                        <Link
+                                            href={
+                                                lead.company.website.startsWith(
+                                                    'http'
                                                 )
-                                            )}
-                                        </div>
+                                                    ? lead.company.website
+                                                    : `https://${lead.company.website}`
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hover:text-blue-700"
+                                        >
+                                            {lead.company.website}
+                                        </Link>
                                     ) : (
-                                        '-'
+                                        'N/A'
                                     )}
                                 </TableCell>
 
+                                {/* Full Name */}
+                                <TableCell className="border capitalize">
+                                    {lead.contactPersons[0].firstName}{' '}
+                                    {lead.contactPersons[0].lastName}
+                                </TableCell>
+
                                 {/* Emails */}
-                                <TableCell className="border text-xs">
+                                <TableCell className="border truncate max-w-[200px]">
                                     <div className="space-y-1">
                                         {lead.contactPersons?.flatMap(
                                             (cp, ci) =>
@@ -461,7 +575,7 @@ export default function RootLeadCreateTaskPage() {
                                 </TableCell>
 
                                 {/* Phones */}
-                                <TableCell className="border text-xs">
+                                <TableCell className="border truncate max-w-[200px]">
                                     <div className="space-y-1">
                                         {lead.contactPersons?.flatMap(
                                             (cp, ci) =>
@@ -477,46 +591,45 @@ export default function RootLeadCreateTaskPage() {
                                 </TableCell>
 
                                 {/* Designation */}
-                                <TableCell className="border">
-                                    {lead.contactPersons?.length ? (
-                                        <div className="space-y-1 text-sm">
-                                            {lead.contactPersons.map(
-                                                (cp, i) => (
-                                                    <p
-                                                        key={`cp-des-${lead._id}-${i}`}
-                                                    >
-                                                        {cp.designation || '-'}
-                                                    </p>
-                                                )
-                                            )}
-                                        </div>
-                                    ) : (
-                                        '-'
-                                    )}
+                                <TableCell className="border truncate max-w-[200px] capitalize">
+                                    {lead.contactPersons[0]?.designation ||
+                                        'N/A'}
                                 </TableCell>
 
                                 {/* Address */}
-                                <TableCell className="border">
-                                    {lead.address || '-'}
+                                <TableCell className="border max-w-[200px] truncate capitalize">
+                                    {lead.address || 'N/A'}
                                 </TableCell>
 
                                 {/* Country */}
                                 <TableCell className="border capitalize">
-                                    {lead.country || '-'}
+                                    {lead.country || 'N/A'}
                                 </TableCell>
 
                                 {/* Status */}
-                                <TableCell className="border">
-                                    <span className="capitalize px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
-                                        {lead.status}
-                                    </span>
+                                <TableCell className="border capitalize">
+                                    {lead.status.replace('_', ' ')}
+                                </TableCell>
+                                <TableCell className="border capitalize truncate max-w-[200px]">
+                                    {lead.activities &&
+                                    lead.activities?.length > 0
+                                        ? lead.activities?.map(
+                                              (a) =>
+                                                  OUTCOME_LABELS[
+                                                      a.outcomeCode as keyof typeof OUTCOME_LABELS
+                                                  ]
+                                          )
+                                        : 'N/A'}
+                                </TableCell>
+                                <TableCell className="border max-w-[200px] truncate">
+                                    {lead.notes || 'N/A'}
                                 </TableCell>
                             </TableRow>
                         ))
                     ) : (
                         <TableRow>
                             <TableCell
-                                colSpan={9}
+                                colSpan={12}
                                 className="text-center py-12 text-muted-foreground border"
                             >
                                 No new leads found

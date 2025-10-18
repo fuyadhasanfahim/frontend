@@ -8,6 +8,10 @@ export const data = [
         title: 'Leads',
     },
     {
+        location: '/tasks',
+        title: 'Tasks',
+    },
+    {
         location: '/user-profile',
         title: 'User Profile',
     },

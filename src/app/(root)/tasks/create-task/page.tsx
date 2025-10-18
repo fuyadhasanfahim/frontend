@@ -1,6 +1,6 @@
-import RootLeadCreateTaskPage from '@/components/(root)/leads/create-task/RootLeadCreateTaskPage';
-import { Metadata } from 'next';
 import React from 'react';
+import { Metadata } from 'next';
+import RootLeadCreateTaskPage from '@/components/(root)/tasks/create-task/RootLeadCreateTaskPage';
 
 export const metadata: Metadata = {
     title: 'Create Task | Job Portal',
