@@ -14,7 +14,7 @@ export default function ImportLeadsCard() {
                 <h3 className="text-xl font-semibold">Leads Overview</h3>
                 <div className="flex items-center gap-4">
                     <Link
-                        href={'/leads/create-task'}
+                        href={'/tasks/create-task'}
                         target="_blank"
                         rel="noreferrer"
                     >

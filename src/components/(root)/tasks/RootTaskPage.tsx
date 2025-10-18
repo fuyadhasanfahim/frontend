@@ -25,12 +25,22 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { useSignedUser } from '@/hooks/useSignedUser';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 export default function RootTaskPage() {
-    const [page, setPage] = useState(1);
-    const limit = 20;
+    const { user } = useSignedUser();
 
-    const { data, isLoading } = useGetTasksQuery({ page, limit });
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
+
+    const { data, isLoading, isFetching } = useGetTasksQuery({ page, limit });
 
     const tasks = data?.data ?? [];
     const pagination = data?.pagination ?? {
@@ -49,10 +59,37 @@ export default function RootTaskPage() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>My Tasks</CardTitle>
+                <CardTitle>
+                    {user?.role === 'admin' || user?.role === 'super-admin'
+                        ? 'All Tasks'
+                        : 'My Tasks'}
+                </CardTitle>
             </CardHeader>
 
-            <CardContent className="overflow-x-auto">
+            <CardContent className="space-y-6">
+                <div className="w-full">
+                    <div className="flex justify-end">
+                        <Select
+                            value={String(limit)}
+                            onValueChange={(val) => {
+                                setPage(1);
+                                setLimit(Number(val));
+                            }}
+                        >
+                            <SelectTrigger className="w-[120px] border-gray-300">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[20, 50, 100].map((n) => (
+                                    <SelectItem key={n} value={String(n)}>
+                                        {n} / page
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
                 <Table>
                     <TableHeader className="bg-accent">
                         <TableRow>
@@ -62,6 +99,7 @@ export default function RootTaskPage() {
                                 Assigned To
                             </TableHead>
                             <TableHead className="border">Created By</TableHead>
+                            <TableHead className="border">Leads</TableHead>
                             <TableHead className="border">Status</TableHead>
                             <TableHead className="border text-center">
                                 Progress
@@ -75,7 +113,7 @@ export default function RootTaskPage() {
                     </TableHeader>
 
                     <TableBody>
-                        {isLoading ? (
+                        {isLoading || isFetching ? (
                             Array.from({ length: 10 }).map((_, i) => (
                                 <TableRow key={i}>
                                     {Array.from({ length: 8 }).map((__, j) => (
@@ -101,6 +139,9 @@ export default function RootTaskPage() {
                                     <TableCell className="border">
                                         {task.createdBy?.firstName}{' '}
                                         {task.createdBy?.lastName}
+                                    </TableCell>
+                                    <TableCell className="border text-center">
+                                        {task.leads?.length ?? 0}
                                     </TableCell>
                                     <TableCell className="border">
                                         <Badge

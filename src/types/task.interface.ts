@@ -1,9 +1,12 @@
+import { ILead } from './lead.interface';
+
 export interface ITask {
     _id: string;
     title?: string;
     description?: string;
     type: 'lead_generation';
     quantity?: number;
+    leads?: ILead[];
 
     createdBy: {
         firstName: string;
