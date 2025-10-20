@@ -109,7 +109,9 @@ export default function RootLeadCreateTaskPage() {
         data: usersData,
         isLoading: usersLoading,
         isFetching: usersFetching,
-    } = useGetAllUsersQuery(undefined);
+    } = useGetAllUsersQuery({
+        role: selectedRole,
+    });
 
     const {
         data,

@@ -34,14 +34,42 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { IconPlus } from '@tabler/icons-react';
+import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
+import { IUser } from '@/types/user.interface';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+const roles = [
+    'lead-generator',
+    'telemarketer',
+    'digital-marketer',
+    'seo-executive',
+    'social-media-executive',
+    'web-developer',
+    'photo-editor',
+    'graphic-designer',
+];
 
 export default function RootTaskPage() {
     const { user } = useSignedUser();
 
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
+    const [selectedRole, setSelectedRole] = useState('');
+    const [selectedUserId, setSelectedUserId] = useState('');
 
-    const { data, isLoading, isFetching } = useGetTasksQuery({ page, limit });
+    const { data, isLoading, isFetching } = useGetTasksQuery({
+        page,
+        limit,
+        selectedUserId,
+    });
+    const {
+        data: usersData,
+        isLoading: usersLoading,
+        isFetching: usersFetching,
+    } = useGetAllUsersQuery({
+        role: selectedRole,
+        userId: selectedUserId,
+    });
 
     const tasks = data?.data ?? [];
     const pagination = data?.pagination ?? {
@@ -70,6 +98,124 @@ export default function RootTaskPage() {
             <CardContent className="space-y-6">
                 <div className="w-full">
                     <div className="flex gap-4 items-center justify-end">
+                        {user?.role === 'admin' ||
+                            (user?.role === 'super-admin' && (
+                                <>
+                                    <Select
+                                        value={selectedRole}
+                                        onValueChange={(val) =>
+                                            setSelectedRole(val)
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="role"
+                                            className="capitalize"
+                                        >
+                                            <SelectValue placeholder="Select role" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {roles.map((r, i) => (
+                                                <SelectItem
+                                                    key={i}
+                                                    value={r}
+                                                    className="capitalize"
+                                                >
+                                                    {r.replace('-', ' ')}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select
+                                        value={selectedUserId}
+                                        onValueChange={(val) =>
+                                            setSelectedUserId(val)
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="users"
+                                            className="capitalize"
+                                        >
+                                            <SelectValue placeholder="Select user" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">
+                                                All
+                                            </SelectItem>
+                                            {usersLoading || usersFetching ? (
+                                                <div className="space-y-2 p-2">
+                                                    {Array.from({
+                                                        length: 5,
+                                                    }).map((_, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="flex items-center gap-2 w-full"
+                                                        >
+                                                            <Skeleton className="h-6 w-6 rounded-full" />
+                                                            <div className="space-y-1">
+                                                                <Skeleton className="h-3 w-32" />
+                                                                <Skeleton className="h-2 w-20" />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : usersData?.users?.length > 0 ? (
+                                                usersData?.users?.map(
+                                                    (u: IUser) => (
+                                                        <SelectItem
+                                                            key={u._id}
+                                                            value={u._id}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <Avatar className="h-6 w-6">
+                                                                    <AvatarImage
+                                                                        src={
+                                                                            u.image ||
+                                                                            ''
+                                                                        }
+                                                                        alt={
+                                                                            u.firstName ||
+                                                                            'User'
+                                                                        }
+                                                                    />
+                                                                    <AvatarFallback>
+                                                                        {u.firstName?.[0]?.toUpperCase() ||
+                                                                            'U'}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-sm font-medium">
+                                                                        {
+                                                                            u.firstName
+                                                                        }{' '}
+                                                                        {
+                                                                            u.lastName
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-muted-foreground capitalize">
+                                                                        {u.role?.replace(
+                                                                            /-/g,
+                                                                            ' '
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </SelectItem>
+                                                    )
+                                                )
+                                            ) : (
+                                                <SelectItem
+                                                    value="no-users"
+                                                    disabled
+                                                >
+                                                    No users found
+                                                </SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </>
+                            ))}
+
                         <Link
                             href={'/tasks/create-task'}
                             target="_blank"
@@ -128,7 +274,7 @@ export default function RootTaskPage() {
                         {isLoading || isFetching ? (
                             Array.from({ length: 10 }).map((_, i) => (
                                 <TableRow key={i}>
-                                    {Array.from({ length: 8 }).map((__, j) => (
+                                    {Array.from({ length: 10 }).map((__, j) => (
                                         <TableCell key={j} className="border">
                                             <Skeleton className="h-6 w-24" />
                                         </TableCell>
@@ -214,7 +360,7 @@ export default function RootTaskPage() {
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={9}
+                                    colSpan={10}
                                     className="text-center py-12 text-gray-500 border"
                                 >
                                     No tasks found

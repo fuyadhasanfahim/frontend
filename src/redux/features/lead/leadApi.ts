@@ -21,6 +21,7 @@ export const leadApi = apiSlice.injectEndpoints({
                 country,
                 outcome,
                 date,
+                selectedUserId,
             }) => ({
                 url: '/leads/get-leads',
                 method: 'GET',
@@ -34,6 +35,7 @@ export const leadApi = apiSlice.injectEndpoints({
                     country,
                     outcome,
                     date,
+                    selectedUserId,
                 },
             }),
             providesTags: ['Leads'],

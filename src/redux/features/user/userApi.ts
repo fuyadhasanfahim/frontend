@@ -43,9 +43,12 @@ export const userApi = apiSlice.injectEndpoints({
             },
         }),
         getAllUsers: builder.query({
-            query: () => ({
+            query: ({ role }) => ({
                 url: `/users/get-all-users`,
                 method: 'GET',
+                params: {
+                    role,
+                },
             }),
         }),
         updatePassword: builder.mutation({

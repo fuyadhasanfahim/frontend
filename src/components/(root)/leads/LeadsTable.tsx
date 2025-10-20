@@ -33,7 +33,10 @@ import { useGetCountriesQuery } from '@/redux/features/country/countryApi';
 import Link from 'next/link';
 import { IconEdit, IconInfoCircle } from '@tabler/icons-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
+import { IUser } from '@/types/user.interface';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useSignedUser } from '@/hooks/useSignedUser';
 
 type SortOption =
     | 'companyAsc'
@@ -45,42 +48,77 @@ type SortOption =
     | 'dateAsc'
     | 'dateDesc';
 
-const STATUS_TABS = [
-    'all',
-    'new',
-    'contacted',
-    'responded',
-    'qualified',
-    'meetingScheduled',
-    'proposal',
-    'won',
-    'lost',
-    'onHold',
-] as const;
+const outcomes = [
+    {
+        title: 'All',
+        value: 'all',
+    },
+    {
+        title: 'Test Trial',
+        value: 'interestedTrial',
+    },
+    {
+        title: 'Wants More Info',
+        value: 'interestedInfo',
+    },
+    {
+        title: 'Wants Quotation',
+        value: 'interestedQuotation',
+    },
+    {
+        title: 'Onboard Client',
+        value: 'onboardClient',
+    },
+    {
+        title: 'No Answer / Missed',
+        value: 'noAnswer',
+    },
+    {
+        title: 'Not Interested (FP)',
+        value: 'notInterestedNow',
+    },
+    {
+        title: 'Invalid / Wrong Number',
+        value: 'invalidNumber',
+    },
+    {
+        title: 'Existing',
+        value: 'existingClientFollowUp',
+    },
+];
 
-const OUTCOME_LABELS: Record<string, string> = {
-    all: 'All',
-    interestedInfo: 'Interested - Wants More Info',
-    interestedQuotation: 'Interested - Wants Quotation',
-    noAnswer: 'No Answer / Missed',
-    notInterestedNow: 'Not Interested (Future Potential)',
-    invalidNumber: 'Invalid / Wrong Number',
-    existingClientFollowUp: 'Existing Client Follow-Up',
-    systemUpdate: 'System Update',
-};
+const roles = [
+    'lead-generator',
+    'telemarketer',
+    'digital-marketer',
+    'seo-executive',
+    'social-media-executive',
+    'web-developer',
+    'photo-editor',
+    'graphic-designer',
+];
 
 export default function LeadsTable() {
+    const { user } = useSignedUser();
+
     const [search, setSearch] = useState('');
     const [countryFilter, setCountryFilter] = useState<string>('all');
     const [sort, setSort] = useState<SortOption>('dateDesc');
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
-    const [status, setStatus] = useState<string>('all');
-    const [outcome, setOutcome] = useState<keyof typeof OUTCOME_LABELS | ''>(
-        'all'
-    );
+    const [outcome, setOutcome] = useState('all');
+    const [selectedRole, setSelectedRole] = useState('');
+    const [selectedUserId, setSelectedUserId] = useState('');
 
     const { data: countries } = useGetCountriesQuery({});
+    const {
+        data: usersData,
+        isLoading: usersLoading,
+        isFetching: usersFetching,
+    } = useGetAllUsersQuery({
+        role: selectedRole,
+        userId: selectedUserId,
+    });
 
     const getSortParams = () => {
         switch (sort) {
@@ -113,8 +151,8 @@ export default function LeadsTable() {
         country: countryFilter,
         sortBy,
         sortOrder,
-        status,
         outcome,
+        selectedUserId,
     });
 
     const leads = data?.data ?? [];
@@ -125,29 +163,27 @@ export default function LeadsTable() {
             <CardContent>
                 <Tabs
                     defaultValue="all"
-                    value={status}
+                    value={outcome}
                     onValueChange={(val) => {
-                        setStatus(val);
+                        setOutcome(val);
                         setPage(1);
                     }}
                 >
                     <TabsList className="w-full overflow-x-auto flex-nowrap">
-                        {STATUS_TABS.map((s) => (
+                        {outcomes.map(({ value, title }, i) => (
                             <TabsTrigger
-                                key={s}
-                                value={s}
-                                className="capitalize whitespace-nowrap"
+                                key={i}
+                                value={value}
+                                className="truncate"
                             >
-                                {s === 'all'
-                                    ? 'All'
-                                    : s.replace(/([A-Z])/g, ' $1')}
+                                {title}
                             </TabsTrigger>
                         ))}
                     </TabsList>
 
-                    <TabsContent value={status}>
+                    <TabsContent value={outcome}>
                         {/* Filters */}
-                        <div className="flex flex-wrap justify-between items-end gap-3 mt-4">
+                        <div className="flex flex-wrap justify-between items-center gap-3 mt-4">
                             <div className="relative w-full sm:w-80">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
@@ -163,167 +199,223 @@ export default function LeadsTable() {
 
                             <div className="flex items-center gap-4">
                                 {/* Country Filter */}
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="country">Country:</Label>
-                                    <Select
-                                        value={countryFilter}
-                                        onValueChange={(val) => {
-                                            setPage(1);
-                                            setCountryFilter(val);
-                                        }}
+                                <Select
+                                    value={countryFilter}
+                                    onValueChange={(val) => {
+                                        setPage(1);
+                                        setCountryFilter(val);
+                                    }}
+                                >
+                                    <SelectTrigger
+                                        id="country"
+                                        className="capitalize"
                                     >
-                                        <SelectTrigger
-                                            id="country"
-                                            className="capitalize"
-                                        >
-                                            <SelectValue placeholder="Country" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">
-                                                All Countries
+                                        <SelectValue placeholder="Country" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">
+                                            All Countries
+                                        </SelectItem>
+                                        {countries?.map((c, i) => (
+                                            <SelectItem
+                                                key={i}
+                                                value={c.name}
+                                                className="capitalize"
+                                            >
+                                                {c.name}
                                             </SelectItem>
-                                            {countries?.map((c, i) => (
-                                                <SelectItem
-                                                    key={i}
-                                                    value={c.name}
-                                                    className="capitalize"
-                                                >
-                                                    {c.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="status">Status:</Label>
-                                    <Select
-                                        value={status}
-                                        onValueChange={(val) => setStatus(val)}
-                                    >
-                                        <SelectTrigger
-                                            id="status"
-                                            className="w-full border-gray-300 capitalize"
-                                        >
-                                            <SelectValue placeholder="Outcome" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {STATUS_TABS.map((s) => (
-                                                <SelectItem
-                                                    key={s}
-                                                    value={s}
-                                                    className="capitalize"
-                                                >
-                                                    {s}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="outcome">Outcome:</Label>
-                                    <Select
-                                        value={outcome}
-                                        onValueChange={(val) =>
-                                            setOutcome(
-                                                val as keyof typeof OUTCOME_LABELS
-                                            )
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="outcome"
-                                            className="w-[170px] border-gray-300"
-                                        >
-                                            <SelectValue placeholder="Outcome" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Object.entries(OUTCOME_LABELS).map(
-                                                ([value, label]) => (
-                                                    <SelectItem
-                                                        key={value}
-                                                        value={value}
-                                                    >
-                                                        {label}
-                                                    </SelectItem>
-                                                )
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
 
                                 {/* Sort */}
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="sort">Sort:</Label>
-                                    <Select
-                                        value={sort}
-                                        onValueChange={(val) =>
-                                            setSort(val as SortOption)
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="sort"
-                                            className="w-[170px] border-gray-300"
-                                        >
-                                            <SelectValue placeholder="Sort by" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="companyAsc">
-                                                Company A-Z
-                                            </SelectItem>
-                                            <SelectItem value="companyDesc">
-                                                Company Z-A
-                                            </SelectItem>
-                                            <SelectItem value="countryAsc">
-                                                Country A-Z
-                                            </SelectItem>
-                                            <SelectItem value="countryDesc">
-                                                Country Z-A
-                                            </SelectItem>
-                                            <SelectItem value="statusAsc">
-                                                Status A-Z
-                                            </SelectItem>
-                                            <SelectItem value="statusDesc">
-                                                Status Z-A
-                                            </SelectItem>
-                                            <SelectItem value="dateAsc">
-                                                Oldest first
-                                            </SelectItem>
-                                            <SelectItem value="dateDesc">
-                                                Newest first
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <Select
+                                    value={sort}
+                                    onValueChange={(val) =>
+                                        setSort(val as SortOption)
+                                    }
+                                >
+                                    <SelectTrigger id="sort">
+                                        <SelectValue
+                                            placeholder="Sort by"
+                                            className="capitalize"
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="companyAsc">
+                                            Company A-Z
+                                        </SelectItem>
+                                        <SelectItem value="companyDesc">
+                                            Company Z-A
+                                        </SelectItem>
+                                        <SelectItem value="countryAsc">
+                                            Country A-Z
+                                        </SelectItem>
+                                        <SelectItem value="countryDesc">
+                                            Country Z-A
+                                        </SelectItem>
+                                        <SelectItem value="statusAsc">
+                                            Status A-Z
+                                        </SelectItem>
+                                        <SelectItem value="statusDesc">
+                                            Status Z-A
+                                        </SelectItem>
+                                        <SelectItem value="dateAsc">
+                                            Oldest first
+                                        </SelectItem>
+                                        <SelectItem value="dateDesc">
+                                            Newest first
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                {user?.role === 'admin' ||
+                                    (user?.role === 'super-admin' && (
+                                        <>
+                                            <Select
+                                                value={selectedRole}
+                                                onValueChange={(val) =>
+                                                    setSelectedRole(val)
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    id="role"
+                                                    className="capitalize"
+                                                >
+                                                    <SelectValue placeholder="Select role" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {roles.map((r, i) => (
+                                                        <SelectItem
+                                                            key={i}
+                                                            value={r}
+                                                            className="capitalize"
+                                                        >
+                                                            {r.replace(
+                                                                '-',
+                                                                ' '
+                                                            )}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+
+                                            <Select
+                                                value={selectedUserId}
+                                                onValueChange={(val) =>
+                                                    setSelectedUserId(val)
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    id="users"
+                                                    className="capitalize"
+                                                >
+                                                    <SelectValue placeholder="Select user" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">
+                                                        All
+                                                    </SelectItem>
+                                                    {usersLoading ||
+                                                    usersFetching ? (
+                                                        <div className="space-y-2 p-2">
+                                                            {Array.from({
+                                                                length: 5,
+                                                            }).map((_, i) => (
+                                                                <div
+                                                                    key={i}
+                                                                    className="flex items-center gap-2 w-full"
+                                                                >
+                                                                    <Skeleton className="h-6 w-6 rounded-full" />
+                                                                    <div className="space-y-1">
+                                                                        <Skeleton className="h-3 w-32" />
+                                                                        <Skeleton className="h-2 w-20" />
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : usersData?.users
+                                                          ?.length > 0 ? (
+                                                        usersData?.users?.map(
+                                                            (u: IUser) => (
+                                                                <SelectItem
+                                                                    key={u._id}
+                                                                    value={
+                                                                        u._id
+                                                                    }
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Avatar className="h-6 w-6">
+                                                                            <AvatarImage
+                                                                                src={
+                                                                                    u.image ||
+                                                                                    ''
+                                                                                }
+                                                                                alt={
+                                                                                    u.firstName ||
+                                                                                    'User'
+                                                                                }
+                                                                            />
+                                                                            <AvatarFallback>
+                                                                                {u.firstName?.[0]?.toUpperCase() ||
+                                                                                    'U'}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-sm font-medium">
+                                                                                {
+                                                                                    u.firstName
+                                                                                }{' '}
+                                                                                {
+                                                                                    u.lastName
+                                                                                }
+                                                                            </span>
+                                                                            <span className="text-muted-foreground capitalize">
+                                                                                {u.role?.replace(
+                                                                                    /-/g,
+                                                                                    ' '
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </SelectItem>
+                                                            )
+                                                        )
+                                                    ) : (
+                                                        <SelectItem
+                                                            value="no-users"
+                                                            disabled
+                                                        >
+                                                            No users found
+                                                        </SelectItem>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </>
+                                    ))}
 
                                 {/* Per Page */}
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="content">Content:</Label>
-                                    <Select
-                                        value={String(perPage)}
-                                        onValueChange={(val) => {
-                                            setPage(1);
-                                            setPerPage(Number(val));
-                                        }}
-                                    >
-                                        <SelectTrigger
-                                            id="content"
-                                            className="w-[120px] border-gray-300"
-                                        >
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {[20, 50, 100].map((n) => (
-                                                <SelectItem
-                                                    key={n}
-                                                    value={String(n)}
-                                                >
-                                                    {n} / page
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <Select
+                                    value={String(perPage)}
+                                    onValueChange={(val) => {
+                                        setPage(1);
+                                        setPerPage(Number(val));
+                                    }}
+                                >
+                                    <SelectTrigger id="content">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {[20, 50, 100].map((n) => (
+                                            <SelectItem
+                                                key={n}
+                                                value={String(n)}
+                                            >
+                                                {n} / page
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
@@ -523,12 +615,20 @@ export default function LeadsTable() {
                                                         {lead.activities &&
                                                         lead.activities
                                                             ?.length > 0
-                                                            ? lead.activities?.map(
-                                                                  (a) =>
-                                                                      OUTCOME_LABELS[
-                                                                          a.outcomeCode as keyof typeof OUTCOME_LABELS
-                                                                      ]
-                                                              )
+                                                            ? lead.activities
+                                                                  ?.map(
+                                                                      (a) =>
+                                                                          outcomes.find(
+                                                                              (
+                                                                                  o
+                                                                              ) =>
+                                                                                  o.value ===
+                                                                                  a.outcomeCode
+                                                                          )
+                                                                              ?.title ??
+                                                                          a.outcomeCode
+                                                                  )
+                                                                  .join(', ')
                                                             : 'N/A'}
                                                     </TableCell>
                                                     <TableCell className="border max-w-[200px] truncate">
@@ -611,7 +711,7 @@ export default function LeadsTable() {
                                 </span>{' '}
                                 leads
                             </div>
-                            <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
