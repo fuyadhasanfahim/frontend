@@ -39,6 +39,7 @@ import { IUser } from '@/types/user.interface';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const roles = [
+    'all',
     'lead-generator',
     'telemarketer',
     'digital-marketer',

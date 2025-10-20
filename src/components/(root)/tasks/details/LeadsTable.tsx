@@ -135,7 +135,9 @@ export default function LeadsTable({
                                     : 'N/A'}
                             </TableCell>
                             <TableCell className="border max-w-[200px] truncate">
-                                {lead.notes || 'N/A'}
+                                {(lead.activities &&
+                                    lead.activities[0]?.notes) ||
+                                    'N/A'}
                             </TableCell>
                             <TableCell className="border text-center">
                                 <Button

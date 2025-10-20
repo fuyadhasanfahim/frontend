@@ -88,6 +88,7 @@ const outcomes = [
 ];
 
 const roles = [
+    'all',
     'lead-generator',
     'telemarketer',
     'digital-marketer',

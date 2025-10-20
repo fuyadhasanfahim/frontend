@@ -119,19 +119,14 @@ export default function RootTaskDetailsPage() {
             const newStatus = getStatusFromOutcome(
                 statusUpdateData.outcomeCode
             );
-            const newDone = (task.metrics?.done ?? 0) + 1;
-            const total = task.metrics?.total ?? 1;
-            const progress = Math.min(100, Math.round((newDone / total) * 100));
 
+            // Don't calculate progress on frontend - let backend handle it
             await updateTaskWithLead({
                 taskId: task._id,
                 leadId: selectedLead._id,
                 body: {
-                    taskUpdates: {
-                        metrics: { done: newDone, total },
-                        progress,
-                        ...(progress === 100 ? { status: 'completed' } : {}),
-                    },
+                    // Remove taskUpdates from frontend calculation
+                    // Let backend handle the progress calculation
                     leadUpdates: { status: newStatus },
                     activity: {
                         type: 'call',
@@ -151,7 +146,9 @@ export default function RootTaskDetailsPage() {
             setIsDialogOpen(false);
         } catch (error) {
             console.error(error);
-            toast.error('Failed to update lead and task.');
+            const errorMessage =
+                (error as Error).message || 'Failed to update lead and task.';
+            toast.error(errorMessage);
         }
     };
 
