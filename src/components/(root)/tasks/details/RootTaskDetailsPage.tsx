@@ -39,7 +39,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { ChevronDownIcon, NotebookIcon as IconNotebook } from 'lucide-react';
+import { ChevronDownIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import LeadsTable from './LeadsTable';
 
