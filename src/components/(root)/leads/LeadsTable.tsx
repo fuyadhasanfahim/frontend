@@ -25,7 +25,13 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Ellipsis, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import {
+    Ellipsis,
+    ChevronLeft,
+    ChevronRight,
+    Search,
+    ChevronDownIcon,
+} from 'lucide-react';
 import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ILead } from '@/types/lead.interface';
@@ -34,6 +40,12 @@ import Link from 'next/link';
 import { IconEdit, IconInfoCircle } from '@tabler/icons-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { UserFilterSelects } from '@/components/shared/UserFilterSelects';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 type SortOption =
     | 'companyAsc'
@@ -67,6 +79,8 @@ export default function LeadsTable() {
     const [status, setStatus] = useState('all');
     const [selectedRole, setSelectedRole] = useState('all-role');
     const [selectedUserId, setSelectedUserId] = useState('all-user');
+    const [date, setDate] = useState<Date | undefined>(undefined);
+    const [open, setOpen] = useState(false);
 
     const { data: countries } = useGetCountriesQuery({});
 
@@ -103,6 +117,7 @@ export default function LeadsTable() {
         sortOrder,
         status,
         selectedUserId,
+        date: date ? date.toLocaleDateString('en-CA') : '',
     });
 
     const leads = data?.data ?? [];
@@ -177,6 +192,35 @@ export default function LeadsTable() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+
+                                <Popover open={open} onOpenChange={setOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            id="date"
+                                            className="w-auto justify-between font-normal"
+                                        >
+                                            {date
+                                                ? date.toLocaleDateString()
+                                                : 'Select date'}
+                                            <ChevronDownIcon />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        className="w-auto overflow-hidden p-0"
+                                        align="start"
+                                    >
+                                        <Calendar
+                                            mode="single"
+                                            selected={date}
+                                            captionLayout="dropdown"
+                                            onSelect={(date) => {
+                                                setDate(date);
+                                                setOpen(false);
+                                            }}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
 
                                 {/* Sort */}
                                 <Select

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { FormEvent, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,7 +65,7 @@ export default function RootTaskDetailsPage() {
     const [open, setOpen] = useState(false);
 
     const [activityData, setActivityData] = useState<Partial<IActivity>>({
-        status: 'interested',
+        status: 'new',
         notes: '',
         nextAction: undefined,
         dueAt: undefined,
@@ -73,6 +73,7 @@ export default function RootTaskDetailsPage() {
 
     const { data, isLoading, isFetching } = useGetTaskByIdQuery(id, {
         skip: !id,
+        refetchOnMountOrArgChange: false,
     });
     const [updateTaskWithLead, { isLoading: isUpdating }] =
         useUpdateTaskWithLeadMutation();
@@ -85,14 +86,16 @@ export default function RootTaskDetailsPage() {
         setIsDialogOpen(true);
     };
 
-    const handleStatusUpdate = async () => {
+    const handleStatusUpdate = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
         if (!selectedLead || !task || !activityData.status) {
             toast.error('Please select a status before saving.');
             return;
         }
 
         try {
-            await updateTaskWithLead({
+            const res = await updateTaskWithLead({
                 taskId: task._id,
                 leadId: selectedLead._id,
                 body: {
@@ -108,11 +111,23 @@ export default function RootTaskDetailsPage() {
                 },
             }).unwrap();
 
-            toast.success('Lead and activity updated successfully!');
-            setIsDialogOpen(false);
+            if (res.success) {
+                toast.success(
+                    res.message || 'Lead and activity updated successfully!'
+                );
+                setIsDialogOpen(false);
+                setActivityData({
+                    status: 'new',
+                    notes: '',
+                    nextAction: undefined,
+                    dueAt: undefined,
+                });
+            }
         } catch (error) {
             console.error(error);
-            toast.error('Failed to update lead and task.');
+            toast.error(
+                (error as Error).message || 'Failed to update lead and task.'
+            );
         }
     };
 
@@ -146,7 +161,7 @@ export default function RootTaskDetailsPage() {
                         <p>
                             <strong>Status:</strong>
                             <Badge className="ml-2 capitalize">
-                                {task.status}
+                                {task.status.replace('_', ' ')}
                             </Badge>
                         </p>
                         <p>
@@ -235,11 +250,9 @@ export default function RootTaskDetailsPage() {
                     </DialogHeader>
 
                     <form
+                        action="#"
                         className="grid grid-cols-2 gap-4 pt-4"
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            handleStatusUpdate();
-                        }}
+                        onSubmit={handleStatusUpdate}
                     >
                         {/* 🟢 Status */}
                         <div className="space-y-3">
@@ -253,12 +266,16 @@ export default function RootTaskDetailsPage() {
                                     }))
                                 }
                             >
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger className="w-full capitalize">
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {LEAD_STATUS.map((s) => (
-                                        <SelectItem key={s} value={s}>
+                                        <SelectItem
+                                            key={s}
+                                            value={s}
+                                            className="capitalize"
+                                        >
                                             {s.replace(/-/g, ' ')}
                                         </SelectItem>
                                     ))}
@@ -355,6 +372,7 @@ export default function RootTaskDetailsPage() {
                             >
                                 Cancel
                             </Button>
+
                             <Button type="submit" disabled={isUpdating}>
                                 {isUpdating ? <Spinner /> : 'Save'}
                             </Button>

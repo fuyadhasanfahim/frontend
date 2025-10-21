@@ -11,13 +11,14 @@ export const taskApi = apiSlice.injectEndpoints({
             invalidatesTags: ['Tasks'],
         }),
         getTasks: builder.query({
-            query: ({ page, limit, selectedUserId, status }) => ({
+            query: ({ page, limit, selectedUserId, status, date }) => ({
                 url: '/tasks/get-tasks',
                 params: {
                     page,
                     limit,
                     selectedUserId,
                     status,
+                    date,
                 },
             }),
             providesTags: ['Tasks'],

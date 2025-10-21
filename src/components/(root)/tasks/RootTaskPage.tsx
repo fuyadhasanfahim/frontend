@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDownIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGetTasksQuery } from '@/redux/features/task/taskApi';
 import { formatDistanceToNow } from 'date-fns';
 import { ITask } from '@/types/task.interface';
@@ -38,6 +38,12 @@ import { IconPlus } from '@tabler/icons-react';
 import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
 import { IUser } from '@/types/user.interface';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 const roles = [
     'all',
@@ -67,12 +73,15 @@ export default function RootTaskPage() {
     const [selectedRole, setSelectedRole] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('all');
+    const [date, setDate] = useState<Date | undefined>(undefined);
+    const [open, setOpen] = useState(false);
 
     const { data, isLoading, isFetching } = useGetTasksQuery({
         page,
         limit,
         selectedUserId,
         status: selectedStatus,
+        date: date ? date.toLocaleDateString('en-CA') : '',
     });
 
     const {
@@ -258,6 +267,35 @@ export default function RootTaskPage() {
                                             </Select>
                                         </>
                                     ))}
+
+                                <Popover open={open} onOpenChange={setOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            id="date"
+                                            className="w-auto justify-between font-normal"
+                                        >
+                                            {date
+                                                ? date.toLocaleDateString()
+                                                : 'Select date'}
+                                            <ChevronDownIcon />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        className="w-auto overflow-hidden p-0"
+                                        align="start"
+                                    >
+                                        <Calendar
+                                            mode="single"
+                                            selected={date}
+                                            captionLayout="dropdown"
+                                            onSelect={(date) => {
+                                                setDate(date);
+                                                setOpen(false);
+                                            }}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
 
                                 <Link
                                     href={'/tasks/create-task'}
