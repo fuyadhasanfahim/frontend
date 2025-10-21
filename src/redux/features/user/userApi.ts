@@ -43,11 +43,12 @@ export const userApi = apiSlice.injectEndpoints({
             },
         }),
         getAllUsers: builder.query({
-            query: ({ role }) => ({
+            query: ({ role, includeAdmins }) => ({
                 url: `/users/get-all-users`,
                 method: 'GET',
                 params: {
                     role,
+                    includeAdmins,
                 },
             }),
         }),

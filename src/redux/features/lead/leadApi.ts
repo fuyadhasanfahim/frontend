@@ -19,7 +19,6 @@ export const leadApi = apiSlice.injectEndpoints({
                 sortBy,
                 sortOrder,
                 country,
-                outcome,
                 date,
                 selectedUserId,
             }) => ({
@@ -33,7 +32,6 @@ export const leadApi = apiSlice.injectEndpoints({
                     sortBy,
                     sortOrder,
                     country,
-                    outcome,
                     date,
                     selectedUserId,
                 },

@@ -76,7 +76,6 @@ export function CountrySelect({
 
     return (
         <div className={cn('flex items-center gap-2', className)}>
-            {/* Main Selector */}
             {isLoading ? (
                 <Skeleton className="h-10 w-48 rounded-md" />
             ) : (
@@ -132,7 +131,6 @@ export function CountrySelect({
                 </Popover>
             )}
 
-            {/* Add Country Dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                     <Button

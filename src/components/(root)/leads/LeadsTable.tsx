@@ -37,6 +37,7 @@ import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
 import { IUser } from '@/types/user.interface';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSignedUser } from '@/hooks/useSignedUser';
+import { UserFilterSelects } from '@/components/shared/UserFilterSelects';
 
 type SortOption =
     | 'companyAsc'
@@ -48,78 +49,30 @@ type SortOption =
     | 'dateAsc'
     | 'dateDesc';
 
-const outcomes = [
-    {
-        title: 'All',
-        value: 'all',
-    },
-    {
-        title: 'Test Trial',
-        value: 'interestedTrial',
-    },
-    {
-        title: 'Wants More Info',
-        value: 'interestedInfo',
-    },
-    {
-        title: 'Wants Quotation',
-        value: 'interestedQuotation',
-    },
-    {
-        title: 'Onboard Client',
-        value: 'onboardClient',
-    },
-    {
-        title: 'No Answer / Missed',
-        value: 'noAnswer',
-    },
-    {
-        title: 'Not Interested (FP)',
-        value: 'notInterestedNow',
-    },
-    {
-        title: 'Invalid / Wrong Number',
-        value: 'invalidNumber',
-    },
-    {
-        title: 'Existing',
-        value: 'existingClientFollowUp',
-    },
-];
-
-const roles = [
+const statusData = [
     'all',
-    'lead-generator',
-    'telemarketer',
-    'digital-marketer',
-    'seo-executive',
-    'social-media-executive',
-    'web-developer',
-    'photo-editor',
-    'graphic-designer',
+    'new',
+    'busy',
+    'answering-machine',
+    'interested',
+    'not-interested',
+    'test-trial',
+    'call-back',
+    'on-board',
+    'invalid-number',
 ];
 
 export default function LeadsTable() {
-    const { user } = useSignedUser();
-
     const [search, setSearch] = useState('');
     const [countryFilter, setCountryFilter] = useState<string>('all');
     const [sort, setSort] = useState<SortOption>('dateDesc');
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
-    const [outcome, setOutcome] = useState('all');
-    const [selectedRole, setSelectedRole] = useState('');
-    const [selectedUserId, setSelectedUserId] = useState('');
+    const [status, setStatus] = useState('all');
+    const [selectedRole, setSelectedRole] = useState('all-role');
+    const [selectedUserId, setSelectedUserId] = useState('all-user');
 
     const { data: countries } = useGetCountriesQuery({});
-    const {
-        data: usersData,
-        isLoading: usersLoading,
-        isFetching: usersFetching,
-    } = useGetAllUsersQuery({
-        role: selectedRole,
-        userId: selectedUserId,
-    });
 
     const getSortParams = () => {
         switch (sort) {
@@ -152,7 +105,7 @@ export default function LeadsTable() {
         country: countryFilter,
         sortBy,
         sortOrder,
-        outcome,
+        status,
         selectedUserId,
     });
 
@@ -164,25 +117,25 @@ export default function LeadsTable() {
             <CardContent>
                 <Tabs
                     defaultValue="all"
-                    value={outcome}
+                    value={status}
                     onValueChange={(val) => {
-                        setOutcome(val);
+                        setStatus(val);
                         setPage(1);
                     }}
                 >
-                    <TabsList className="w-full overflow-x-auto flex-nowrap">
-                        {outcomes.map(({ value, title }, i) => (
+                    <TabsList className="w-full">
+                        {statusData.map((s, i) => (
                             <TabsTrigger
                                 key={i}
-                                value={value}
-                                className="truncate"
+                                value={s}
+                                className="capitalize"
                             >
-                                {title}
+                                {s.replace('-', ' ')}
                             </TabsTrigger>
                         ))}
                     </TabsList>
 
-                    <TabsContent value={outcome}>
+                    <TabsContent value={status}>
                         {/* Filters */}
                         <div className="flex flex-wrap justify-between items-center gap-3 mt-4">
                             <div className="relative w-full sm:w-80">
@@ -270,130 +223,12 @@ export default function LeadsTable() {
                                     </SelectContent>
                                 </Select>
 
-                                {user?.role === 'admin' ||
-                                    (user?.role === 'super-admin' && (
-                                        <>
-                                            <Select
-                                                value={selectedRole}
-                                                onValueChange={(val) =>
-                                                    setSelectedRole(val)
-                                                }
-                                            >
-                                                <SelectTrigger
-                                                    id="role"
-                                                    className="capitalize"
-                                                >
-                                                    <SelectValue placeholder="Select role" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {roles.map((r, i) => (
-                                                        <SelectItem
-                                                            key={i}
-                                                            value={r}
-                                                            className="capitalize"
-                                                        >
-                                                            {r.replace(
-                                                                '-',
-                                                                ' '
-                                                            )}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-
-                                            <Select
-                                                value={selectedUserId}
-                                                onValueChange={(val) =>
-                                                    setSelectedUserId(val)
-                                                }
-                                            >
-                                                <SelectTrigger
-                                                    id="users"
-                                                    className="capitalize"
-                                                >
-                                                    <SelectValue placeholder="Select user" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">
-                                                        All
-                                                    </SelectItem>
-                                                    {usersLoading ||
-                                                    usersFetching ? (
-                                                        <div className="space-y-2 p-2">
-                                                            {Array.from({
-                                                                length: 5,
-                                                            }).map((_, i) => (
-                                                                <div
-                                                                    key={i}
-                                                                    className="flex items-center gap-2 w-full"
-                                                                >
-                                                                    <Skeleton className="h-6 w-6 rounded-full" />
-                                                                    <div className="space-y-1">
-                                                                        <Skeleton className="h-3 w-32" />
-                                                                        <Skeleton className="h-2 w-20" />
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : usersData?.users
-                                                          ?.length > 0 ? (
-                                                        usersData?.users?.map(
-                                                            (u: IUser) => (
-                                                                <SelectItem
-                                                                    key={u._id}
-                                                                    value={
-                                                                        u._id
-                                                                    }
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Avatar className="h-6 w-6">
-                                                                            <AvatarImage
-                                                                                src={
-                                                                                    u.image ||
-                                                                                    ''
-                                                                                }
-                                                                                alt={
-                                                                                    u.firstName ||
-                                                                                    'User'
-                                                                                }
-                                                                            />
-                                                                            <AvatarFallback>
-                                                                                {u.firstName?.[0]?.toUpperCase() ||
-                                                                                    'U'}
-                                                                            </AvatarFallback>
-                                                                        </Avatar>
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-sm font-medium">
-                                                                                {
-                                                                                    u.firstName
-                                                                                }{' '}
-                                                                                {
-                                                                                    u.lastName
-                                                                                }
-                                                                            </span>
-                                                                            <span className="text-muted-foreground capitalize">
-                                                                                {u.role?.replace(
-                                                                                    /-/g,
-                                                                                    ' '
-                                                                                )}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </SelectItem>
-                                                            )
-                                                        )
-                                                    ) : (
-                                                        <SelectItem
-                                                            value="no-users"
-                                                            disabled
-                                                        >
-                                                            No users found
-                                                        </SelectItem>
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
-                                        </>
-                                    ))}
+                                <UserFilterSelects
+                                    selectedRole={selectedRole}
+                                    setSelectedRole={setSelectedRole}
+                                    selectedUserId={selectedUserId}
+                                    setSelectedUserId={setSelectedUserId}
+                                />
 
                                 {/* Per Page */}
                                 <Select
@@ -451,9 +286,6 @@ export default function LeadsTable() {
                                         </TableHead>
                                         <TableHead className="border">
                                             Status
-                                        </TableHead>
-                                        <TableHead className="border">
-                                            Outcome
                                         </TableHead>
                                         <TableHead className="border">
                                             Notes
@@ -608,32 +440,15 @@ export default function LeadsTable() {
                                                     {/* Status */}
                                                     <TableCell className="border capitalize">
                                                         {lead.status.replace(
-                                                            '_',
+                                                            /-/g,
                                                             ' '
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="border capitalize max-w-[200px] truncate">
-                                                        {lead.activities &&
-                                                        lead.activities
-                                                            ?.length > 0
-                                                            ? lead.activities
-                                                                  ?.map(
-                                                                      (a) =>
-                                                                          outcomes.find(
-                                                                              (
-                                                                                  o
-                                                                              ) =>
-                                                                                  o.value ===
-                                                                                  a.outcomeCode
-                                                                          )
-                                                                              ?.title ??
-                                                                          a.outcomeCode
-                                                                  )
-                                                                  .join(', ')
-                                                            : 'N/A'}
-                                                    </TableCell>
                                                     <TableCell className="border max-w-[200px] truncate">
-                                                        {lead.notes || 'N/A'}
+                                                        {(lead.activities &&
+                                                            lead.activities[0]
+                                                                ?.notes) ||
+                                                            'N/A'}
                                                     </TableCell>
                                                     {/* Actions */}
                                                     <TableCell className="border text-center">
