@@ -17,13 +17,11 @@ import {
     IconUser,
     IconNotebook,
     IconEdit,
-    IconArrowRight,
     IconNote,
     IconInfoCircle,
 } from '@tabler/icons-react';
 import type { ILead } from '@/types/lead.interface';
 import { format } from 'date-fns';
-import { OUTCOME_LABELS } from '../../tasks/details/RootTaskDetailsPage';
 
 export default function LeadDetailsPage() {
     const { id } = useParams<{ id: string }>();
@@ -276,71 +274,83 @@ export default function LeadDetailsPage() {
                         Recent Activities
                     </CardTitle>
                 </CardHeader>
+
                 <CardContent className="text-sm text-gray-700">
                     {lead.activities?.length ? (
                         <ul className="space-y-4">
-                            {lead.activities.map((a, i) => {
-                                const outcomeLabel =
-                                    OUTCOME_LABELS[
-                                        a.outcomeCode as keyof typeof OUTCOME_LABELS
-                                    ] || '—';
+                            {lead.activities.map((a, i) => (
+                                <li
+                                    key={i}
+                                    className="border-l-2 border-gray-200 pl-3 pb-2 space-y-1"
+                                >
+                                    {/* Header Row */}
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-2">
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="capitalize"
+                                                >
+                                                    {a.status.replace(
+                                                        /-/g,
+                                                        ' '
+                                                    )}
+                                                </Badge>
 
-                                const hasStatusChange =
-                                    a.statusFrom || a.statusTo
-                                        ? a.statusFrom !== a.statusTo
-                                        : false;
-
-                                return (
-                                    <li
-                                        key={i}
-                                        className="border-l-2 border-gray-200 pl-3 pb-2"
-                                    >
-                                        {/* Header Row */}
-                                        <div className="flex justify-between items-start">
-                                            <div className="font-medium capitalize flex items-center gap-2">
-                                                <span>{a.type}</span>
-                                                {a.outcomeCode && (
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className="capitalize"
-                                                    >
-                                                        {outcomeLabel}
-                                                    </Badge>
+                                                {a.nextAction && (
+                                                    <span className="text-xs text-gray-500 capitalize">
+                                                        Next:{' '}
+                                                        {a.nextAction.replace(
+                                                            /-/g,
+                                                            ' '
+                                                        )}
+                                                    </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-gray-500">
-                                                {a.at
-                                                    ? format(a.at, 'PPP, p')
-                                                    : '—'}
-                                            </span>
+
+                                            {a.dueAt && (
+                                                <p className="text-xs text-gray-500">
+                                                    Due:{' '}
+                                                    {format(
+                                                        new Date(a.dueAt),
+                                                        'PPP'
+                                                    )}
+                                                </p>
+                                            )}
                                         </div>
 
-                                        {/* Notes */}
-                                        <div className="mt-1">
-                                            <p className="text-gray-600">
-                                                {a.notes?.trim()
-                                                    ? a.notes
-                                                    : a.content?.trim()
-                                                    ? a.content
-                                                    : 'No notes recorded.'}
-                                            </p>
-                                        </div>
+                                        <span className="text-xs text-gray-500">
+                                            {a.at
+                                                ? format(
+                                                      new Date(a.at),
+                                                      'PPP, p'
+                                                  )
+                                                : '—'}
+                                        </span>
+                                    </div>
 
-                                        {/* Status Change */}
-                                        {hasStatusChange && (
-                                            <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
-                                                <span className="capitalize font-medium text-gray-600">
-                                                    {a.statusFrom || 'N/A'}
-                                                </span>
-                                                <IconArrowRight className="h-3 w-3" />
-                                                <span className="capitalize font-medium text-gray-800">
-                                                    {a.statusTo || 'N/A'}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </li>
-                                );
-                            })}
+                                    {/* Notes */}
+                                    <div className="mt-1">
+                                        <p className="text-gray-600 whitespace-pre-line">
+                                            {a.notes?.trim()
+                                                ? a.notes
+                                                : 'No notes recorded.'}
+                                        </p>
+                                    </div>
+
+                                    {/* User Info */}
+                                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                        <span>By:</span>
+                                        <span className="font-medium text-gray-700">
+                                            {a.byUser?.firstName
+                                                ? `${a.byUser.firstName} ${
+                                                      a.byUser.lastName ?? ''
+                                                  }`
+                                                : 'User'}
+                                        </span>
+                                    </div>
+                                </li>
+                            ))}
                         </ul>
                     ) : (
                         <p className="text-gray-500">

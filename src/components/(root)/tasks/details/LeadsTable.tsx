@@ -10,7 +10,6 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { ILead } from '@/types/lead.interface';
-import { OUTCOME_LABELS } from './RootTaskDetailsPage';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -34,7 +33,6 @@ export default function LeadsTable({
                     <TableHead className="border">Address</TableHead>
                     <TableHead className="border">Country</TableHead>
                     <TableHead className="border">Status</TableHead>
-                    <TableHead className="border">Outcome</TableHead>
                     <TableHead className="border">Notes</TableHead>
                     <TableHead className="border text-center">Action</TableHead>
                 </TableRow>
@@ -125,16 +123,6 @@ export default function LeadsTable({
                                 {lead.status.replace('_', ' ')}
                             </TableCell>
                             <TableCell className="border capitalize truncate max-w-[200px]">
-                                {lead.activities && lead.activities?.length > 0
-                                    ? lead.activities?.map(
-                                          (a) =>
-                                              OUTCOME_LABELS[
-                                                  a.outcomeCode as keyof typeof OUTCOME_LABELS
-                                              ]
-                                      )
-                                    : 'N/A'}
-                            </TableCell>
-                            <TableCell className="border max-w-[200px] truncate">
                                 {(lead.activities &&
                                     lead.activities[0]?.notes) ||
                                     'N/A'}

@@ -33,10 +33,6 @@ import { useGetCountriesQuery } from '@/redux/features/country/countryApi';
 import Link from 'next/link';
 import { IconEdit, IconInfoCircle } from '@tabler/icons-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
-import { IUser } from '@/types/user.interface';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useSignedUser } from '@/hooks/useSignedUser';
 import { UserFilterSelects } from '@/components/shared/UserFilterSelects';
 
 type SortOption =

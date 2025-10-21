@@ -28,7 +28,7 @@ export interface IActivity {
     notes?: string;
     nextAction?: 'follow-up' | 'send-proposal' | 'call-back' | 'close';
     dueAt?: Date;
-    byUser: string;
+    byUser: { firstName?: string; lastName?: string };
     at: Date;
 }
 

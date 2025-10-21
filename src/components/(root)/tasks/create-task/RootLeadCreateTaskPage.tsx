@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
     Table,
     TableBody,
@@ -19,14 +19,12 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { ChevronDownIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetCountriesQuery } from '@/redux/features/country/countryApi';
 import { useGetLeadsQuery } from '@/redux/features/lead/leadApi';
 import { useCreateTaskMutation } from '@/redux/features/task/taskApi';
-import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
 import { useSignedUser } from '@/hooks/useSignedUser';
 import { ILead } from '@/types/lead.interface';
 import { toast } from 'sonner';
@@ -38,80 +36,40 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import Link from 'next/link';
-
-interface IUser {
-    _id: string;
-    firstName: string;
-    lastName?: string;
-    email?: string;
-    role: string;
-    image?: string;
-}
+import { UserFilterSelects } from '@/components/shared/UserFilterSelects';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type SortOption = 'companyAsc' | 'companyDesc' | 'countryAsc' | 'countryDesc';
 
-const ROLES = [
-    'lead-generator',
-    'telemarketer',
-    'digital-marketer',
-    'seo-executive',
-    'social-media-executive',
-    'web-developer',
-    'photo-editor',
-    'graphic-designer',
-] as const;
-
-const OUTCOME_LABELS: Record<string, string> = {
-    all: 'All',
-    interestedInfo: 'Interested - Wants More Info',
-    interestedQuotation: 'Interested - Wants Quotation',
-    noAnswer: 'No Answer / Missed',
-    notInterestedNow: 'Not Interested (Future Potential)',
-    invalidNumber: 'Invalid / Wrong Number',
-    existingClientFollowUp: 'Existing Client Follow-Up',
-    systemUpdate: 'System Update',
-};
-
-const STATUS_TABS = [
-    'all',
-    'new',
-    'contacted',
-    'responded',
-    'qualified',
-    'meetingScheduled',
-    'proposal',
-    'won',
-    'lost',
-    'onHold',
-] as const;
+const statusTabs = [
+    { value: 'all', label: 'All' },
+    { value: 'new', label: 'New' },
+    { value: 'busy', label: 'Busy' },
+    { value: 'answering-machine', label: 'Answering Machine' },
+    { value: 'interested', label: 'Interested' },
+    { value: 'not-interested', label: 'Not Interested' },
+    { value: 'test-trial', label: 'Test Trial' },
+    { value: 'call-back', label: 'Call Back' },
+    { value: 'on-board', label: 'On Board' },
+    { value: 'invalid-number', label: 'Invalid Number' },
+];
 
 export default function RootLeadCreateTaskPage() {
-    const { user, isLoading: userLoading } = useSignedUser();
+    const { user } = useSignedUser();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
 
-    const [selectedRole, setSelectedRole] = useState('');
-    const [selectedUser, setSelectedUser] = useState('');
+    const [selectedRole, setSelectedRole] = useState('all-role');
+    const [selectedUserId, setSelectedUserId] = useState('all-user');
     const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
     const [countryFilter, setCountryFilter] = useState('all');
-    const [status, setStatus] = useState<string>('all');
+    const [status, setStatus] = useState('all');
     const [sort, setSort] = useState<SortOption>('companyAsc');
-    const [outcome, setOutcome] = useState<keyof typeof OUTCOME_LABELS | ''>(
-        'all'
-    );
     const [open, setOpen] = useState(false);
     const [date, setDate] = useState<Date | undefined>(undefined);
 
-    const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
-
     const { data: countries } = useGetCountriesQuery({});
-    const {
-        data: usersData,
-        isLoading: usersLoading,
-        isFetching: usersFetching,
-    } = useGetAllUsersQuery({
-        role: selectedRole,
-    });
 
     const {
         data,
@@ -124,8 +82,8 @@ export default function RootLeadCreateTaskPage() {
         sortBy: sort.includes('company') ? 'company.name' : 'country',
         sortOrder: sort.endsWith('Asc') ? 'asc' : 'desc',
         status,
-        date: date ? date.toISOString().split('T')[0] : '',
-        outcome,
+        date: date ? date.toLocaleDateString('en-CA') : '',
+        selectedUserId,
     });
 
     const leads = data?.data ?? [];
@@ -144,7 +102,7 @@ export default function RootLeadCreateTaskPage() {
     };
 
     const handleCreateTask = async () => {
-        const assignedUserId = isAdmin ? selectedUser : user?._id;
+        const assignedUserId = isAdmin ? selectedUserId : user?._id;
 
         if (!assignedUserId) return toast.error('Please select a user');
         if (selectedLeads.length === 0)
@@ -162,7 +120,7 @@ export default function RootLeadCreateTaskPage() {
 
             toast.success(res.message || 'Task created successfully!');
             setSelectedLeads([]);
-            if (isAdmin) setSelectedUser(''); // optional UX reset
+            if (isAdmin) setSelectedUserId('');
         } catch (err) {
             const message =
                 (err as { data?: { message?: string } })?.data?.message ??
@@ -171,138 +129,47 @@ export default function RootLeadCreateTaskPage() {
         }
     };
 
-    const filteredUsers: IUser[] = useMemo(() => {
-        if (!usersData?.users) return [];
-        if (!selectedRole)
-            return usersData.users.filter((u: IUser) => u._id !== user?._id);
-        return usersData.users.filter(
-            (u: IUser) => u.role === selectedRole && u._id !== user?._id
-        );
-    }, [usersData, selectedRole, user?._id]);
-
-    if (userLoading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <Spinner className="w-8 h-8" />
-            </div>
-        );
-    }
-
-    // ---------- UI ----------
+    // ------------------ UI ------------------
     return (
         <div className="p-6 space-y-6 rounded-lg border bg-card">
             <h2 className="text-xl font-semibold">
                 Create Lead Generation Task
             </h2>
 
+            {/* ✅ Tabs for status filter */}
+            <Tabs
+                value={status}
+                onValueChange={(val) => {
+                    setStatus(val);
+                    setPage(1);
+                }}
+                className="w-full"
+            >
+                <TabsList className="flex flex-wrap gap-2">
+                    {statusTabs.map((s) => (
+                        <TabsTrigger
+                            key={s.value}
+                            value={s.value}
+                            className="capitalize"
+                        >
+                            {s.label}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
+
             {/* Filters */}
-            <div className="grid grid-cols-8 items-center gap-4">
+            <div className="flex items-end justify-end gap-4">
                 {/* Role & User (only visible to admin/super-admin) */}
                 {isAdmin ? (
-                    <>
-                        {/* Role */}
-                        <div className="grid gap-2">
-                            <Label htmlFor="role-select">Select Role</Label>
-                            <Select
-                                onValueChange={setSelectedRole}
-                                value={selectedRole || 'all'}
-                            >
-                                <SelectTrigger
-                                    id="role-select"
-                                    className="w-full capitalize"
-                                >
-                                    <SelectValue placeholder="Select role..." />
-                                </SelectTrigger>
-                                <SelectContent className="capitalize">
-                                    <SelectItem value="all">
-                                        All Roles
-                                    </SelectItem>
-                                    {ROLES.map((role) => (
-                                        <SelectItem key={role} value={role}>
-                                            {role.replace(/-/g, ' ')}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* User */}
-                        <div className="grid gap-2">
-                            <Label htmlFor="user-select">Select User</Label>
-                            <Select
-                                onValueChange={setSelectedUser}
-                                value={selectedUser}
-                                disabled={usersLoading || usersFetching}
-                            >
-                                <SelectTrigger
-                                    id="user-select"
-                                    className="w-full"
-                                >
-                                    <SelectValue placeholder="Select user..." />
-                                </SelectTrigger>
-
-                                <SelectContent>
-                                    {usersLoading || usersFetching ? (
-                                        <div className="space-y-2 p-2">
-                                            {Array.from({ length: 5 }).map(
-                                                (_, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="flex items-center gap-2 w-full"
-                                                    >
-                                                        <Skeleton className="h-6 w-6 rounded-full" />
-                                                        <div className="space-y-1">
-                                                            <Skeleton className="h-3 w-32" />
-                                                            <Skeleton className="h-2 w-20" />
-                                                        </div>
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
-                                    ) : filteredUsers.length > 0 ? (
-                                        filteredUsers.map((u) => (
-                                            <SelectItem
-                                                key={u._id}
-                                                value={u._id}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar className="h-6 w-6">
-                                                        <AvatarImage
-                                                            src={u.image || ''}
-                                                            alt={
-                                                                u.firstName ||
-                                                                'User'
-                                                            }
-                                                        />
-                                                        <AvatarFallback>
-                                                            {u.firstName?.[0]?.toUpperCase() ||
-                                                                'U'}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium">
-                                                            {u.firstName}{' '}
-                                                            {u.lastName}
-                                                        </span>
-                                                        <span className="text-muted-foreground capitalize">
-                                                            {u.role?.replace(
-                                                                /-/g,
-                                                                ' '
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </SelectItem>
-                                        ))
-                                    ) : (
-                                        <SelectItem value="no-users" disabled>
-                                            No users found
-                                        </SelectItem>
-                                    )}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </>
+                    <div className="w-full max-w-5xl">
+                        <UserFilterSelects
+                            selectedRole={selectedRole}
+                            setSelectedRole={setSelectedRole}
+                            selectedUserId={selectedUserId}
+                            setSelectedUserId={setSelectedUserId}
+                        />
+                    </div>
                 ) : (
                     <Input
                         type="hidden"
@@ -339,6 +206,7 @@ export default function RootLeadCreateTaskPage() {
                     </Select>
                 </div>
 
+                {/* Date */}
                 <div className="grid gap-2">
                     <Label htmlFor="date" className="px-1">
                         Date
@@ -371,55 +239,6 @@ export default function RootLeadCreateTaskPage() {
                             />
                         </PopoverContent>
                     </Popover>
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="status">Status:</Label>
-                    <Select
-                        value={status}
-                        onValueChange={(val) => setStatus(val)}
-                    >
-                        <SelectTrigger
-                            id="status"
-                            className="w-full border-gray-300 capitalize"
-                        >
-                            <SelectValue placeholder="Outcome" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {STATUS_TABS.map((s) => (
-                                <SelectItem
-                                    key={s}
-                                    value={s}
-                                    className="capitalize"
-                                >
-                                    {s}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="grid gap-2">
-                    <Label htmlFor="outcome">Outcome:</Label>
-                    <Select
-                        value={outcome}
-                        onValueChange={(val) =>
-                            setOutcome(val as keyof typeof OUTCOME_LABELS)
-                        }
-                    >
-                        <SelectTrigger id="outcome" className="max-w-40 w-full">
-                            <SelectValue placeholder="Outcome" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Object.entries(OUTCOME_LABELS).map(
-                                ([value, label]) => (
-                                    <SelectItem key={value} value={value}>
-                                        {label}
-                                    </SelectItem>
-                                )
-                            )}
-                        </SelectContent>
-                    </Select>
                 </div>
 
                 {/* Sort */}
@@ -495,7 +314,6 @@ export default function RootLeadCreateTaskPage() {
                         <TableHead className="border">Address</TableHead>
                         <TableHead className="border">Country</TableHead>
                         <TableHead className="border">Status</TableHead>
-                        <TableHead className="border">Outcome</TableHead>
                         <TableHead className="border">Notes</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -514,7 +332,6 @@ export default function RootLeadCreateTaskPage() {
                     ) : leads.length ? (
                         leads.map((lead: ILead) => (
                             <TableRow key={lead._id}>
-                                {/* Checkbox */}
                                 <TableCell className="text-center border">
                                     <Checkbox
                                         checked={selectedLeads.includes(
@@ -526,13 +343,9 @@ export default function RootLeadCreateTaskPage() {
                                         aria-label={`Select ${lead.company.name}`}
                                     />
                                 </TableCell>
-
-                                {/* Company */}
                                 <TableCell className="border font-medium max-w-[200px] truncate">
                                     {lead.company.name}
                                 </TableCell>
-
-                                {/* Website */}
                                 <TableCell className="border text-blue-600 underline max-w-[200px] truncate">
                                     {lead.company.website ? (
                                         <Link
@@ -553,14 +366,10 @@ export default function RootLeadCreateTaskPage() {
                                         'N/A'
                                     )}
                                 </TableCell>
-
-                                {/* Full Name */}
                                 <TableCell className="border capitalize">
-                                    {lead.contactPersons[0].firstName}{' '}
-                                    {lead.contactPersons[0].lastName}
+                                    {lead.contactPersons[0]?.firstName}{' '}
+                                    {lead.contactPersons[0]?.lastName}
                                 </TableCell>
-
-                                {/* Emails */}
                                 <TableCell className="border truncate max-w-[200px]">
                                     <div className="space-y-1">
                                         {lead.contactPersons?.flatMap(
@@ -575,8 +384,6 @@ export default function RootLeadCreateTaskPage() {
                                         )}
                                     </div>
                                 </TableCell>
-
-                                {/* Phones */}
                                 <TableCell className="border truncate max-w-[200px]">
                                     <div className="space-y-1">
                                         {lead.contactPersons?.flatMap(
@@ -591,40 +398,23 @@ export default function RootLeadCreateTaskPage() {
                                         )}
                                     </div>
                                 </TableCell>
-
-                                {/* Designation */}
                                 <TableCell className="border truncate max-w-[200px] capitalize">
                                     {lead.contactPersons[0]?.designation ||
                                         'N/A'}
                                 </TableCell>
-
-                                {/* Address */}
                                 <TableCell className="border max-w-[200px] truncate capitalize">
                                     {lead.address || 'N/A'}
                                 </TableCell>
-
-                                {/* Country */}
                                 <TableCell className="border capitalize">
                                     {lead.country || 'N/A'}
                                 </TableCell>
-
-                                {/* Status */}
                                 <TableCell className="border capitalize">
                                     {lead.status.replace('_', ' ')}
                                 </TableCell>
                                 <TableCell className="border capitalize truncate max-w-[200px]">
-                                    {lead.activities &&
-                                    lead.activities?.length > 0
-                                        ? lead.activities?.map(
-                                              (a) =>
-                                                  OUTCOME_LABELS[
-                                                      a.outcomeCode as keyof typeof OUTCOME_LABELS
-                                                  ]
-                                          )
-                                        : 'N/A'}
-                                </TableCell>
-                                <TableCell className="border max-w-[200px] truncate">
-                                    {lead.notes || 'N/A'}
+                                    {(lead.activities &&
+                                        lead.activities[0]?.notes) ||
+                                        'N/A'}
                                 </TableCell>
                             </TableRow>
                         ))
@@ -699,7 +489,7 @@ export default function RootLeadCreateTaskPage() {
                     disabled={
                         creating ||
                         (!isAdmin && !user?._id) ||
-                        (isAdmin && !selectedUser) ||
+                        (isAdmin && !selectedUserId) ||
                         selectedLeads.length === 0
                     }
                     size="lg"

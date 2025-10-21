@@ -33,6 +33,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { IconPlus } from '@tabler/icons-react';
 import { useGetAllUsersQuery } from '@/redux/features/user/userApi';
 import { IUser } from '@/types/user.interface';
@@ -50,6 +51,14 @@ const roles = [
     'graphic-designer',
 ];
 
+const taskStatuses = [
+    { value: 'all', label: 'All' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+];
+
 export default function RootTaskPage() {
     const { user } = useSignedUser();
 
@@ -57,12 +66,15 @@ export default function RootTaskPage() {
     const [limit, setLimit] = useState(20);
     const [selectedRole, setSelectedRole] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState('all');
 
     const { data, isLoading, isFetching } = useGetTasksQuery({
         page,
         limit,
         selectedUserId,
+        status: selectedStatus,
     });
+
     const {
         data: usersData,
         isLoading: usersLoading,
@@ -97,279 +109,352 @@ export default function RootTaskPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-                <div className="w-full">
-                    <div className="flex gap-4 items-center justify-end">
-                        {user?.role === 'admin' ||
-                            (user?.role === 'super-admin' && (
-                                <>
-                                    <Select
-                                        value={selectedRole}
-                                        onValueChange={(val) =>
-                                            setSelectedRole(val)
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="role"
-                                            className="capitalize"
-                                        >
-                                            <SelectValue placeholder="Select role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {roles.map((r, i) => (
-                                                <SelectItem
-                                                    key={i}
-                                                    value={r}
+                {/* ✅ Tabs for task status filter */}
+                <Tabs
+                    value={selectedStatus}
+                    onValueChange={(val) => {
+                        setSelectedStatus(val);
+                        setPage(1);
+                    }}
+                    className="w-full"
+                >
+                    <TabsList className="w-full flex flex-wrap justify-start">
+                        {taskStatuses.map((s) => (
+                            <TabsTrigger
+                                key={s.value}
+                                value={s.value}
+                                className="capitalize"
+                            >
+                                {s.label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+
+                    <TabsContent value={selectedStatus}>
+                        <div className="w-full">
+                            {/* ✅ Filters */}
+                            <div className="flex gap-4 items-center justify-end mt-4">
+                                {user?.role === 'admin' ||
+                                    (user?.role === 'super-admin' && (
+                                        <>
+                                            <Select
+                                                value={selectedRole}
+                                                onValueChange={(val) =>
+                                                    setSelectedRole(val)
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    id="role"
                                                     className="capitalize"
                                                 >
-                                                    {r.replace('-', ' ')}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-
-                                    <Select
-                                        value={selectedUserId}
-                                        onValueChange={(val) =>
-                                            setSelectedUserId(val)
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="users"
-                                            className="capitalize"
-                                        >
-                                            <SelectValue placeholder="Select user" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">
-                                                All
-                                            </SelectItem>
-                                            {usersLoading || usersFetching ? (
-                                                <div className="space-y-2 p-2">
-                                                    {Array.from({
-                                                        length: 5,
-                                                    }).map((_, i) => (
-                                                        <div
-                                                            key={i}
-                                                            className="flex items-center gap-2 w-full"
-                                                        >
-                                                            <Skeleton className="h-6 w-6 rounded-full" />
-                                                            <div className="space-y-1">
-                                                                <Skeleton className="h-3 w-32" />
-                                                                <Skeleton className="h-2 w-20" />
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : usersData?.users?.length > 0 ? (
-                                                usersData?.users?.map(
-                                                    (u: IUser) => (
+                                                    <SelectValue placeholder="Select role" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {roles.map((r, i) => (
                                                         <SelectItem
-                                                            key={u._id}
-                                                            value={u._id}
+                                                            key={i}
+                                                            value={r}
+                                                            className="capitalize"
                                                         >
-                                                            <div className="flex items-center gap-2">
-                                                                <Avatar className="h-6 w-6">
-                                                                    <AvatarImage
-                                                                        src={
-                                                                            u.image ||
-                                                                            ''
-                                                                        }
-                                                                        alt={
-                                                                            u.firstName ||
-                                                                            'User'
-                                                                        }
-                                                                    />
-                                                                    <AvatarFallback>
-                                                                        {u.firstName?.[0]?.toUpperCase() ||
-                                                                            'U'}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-sm font-medium">
-                                                                        {
-                                                                            u.firstName
-                                                                        }{' '}
-                                                                        {
-                                                                            u.lastName
-                                                                        }
-                                                                    </span>
-                                                                    <span className="text-muted-foreground capitalize">
-                                                                        {u.role?.replace(
-                                                                            /-/g,
-                                                                            ' '
-                                                                        )}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
+                                                            {r.replace(
+                                                                '-',
+                                                                ' '
+                                                            )}
                                                         </SelectItem>
-                                                    )
-                                                )
-                                            ) : (
-                                                <SelectItem
-                                                    value="no-users"
-                                                    disabled
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+
+                                            <Select
+                                                value={selectedUserId}
+                                                onValueChange={(val) =>
+                                                    setSelectedUserId(val)
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    id="users"
+                                                    className="capitalize"
                                                 >
-                                                    No users found
-                                                </SelectItem>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                </>
-                            ))}
-
-                        <Link
-                            href={'/tasks/create-task'}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <Button variant={'outline'}>
-                                <IconPlus />
-                                Create Task
-                            </Button>
-                        </Link>
-
-                        <Select
-                            value={String(limit)}
-                            onValueChange={(val) => {
-                                setPage(1);
-                                setLimit(Number(val));
-                            }}
-                        >
-                            <SelectTrigger className="w-[120px] border-gray-300">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {[20, 50, 100].map((n) => (
-                                    <SelectItem key={n} value={String(n)}>
-                                        {n} / page
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                <Table>
-                    <TableHeader className="bg-accent">
-                        <TableRow>
-                            <TableHead className="border">Title</TableHead>
-                            <TableHead className="border">Type</TableHead>
-                            <TableHead className="border">
-                                Assigned To
-                            </TableHead>
-                            <TableHead className="border">Created By</TableHead>
-                            <TableHead className="border">Leads</TableHead>
-                            <TableHead className="border">Status</TableHead>
-                            <TableHead className="border text-center">
-                                Progress
-                            </TableHead>
-                            <TableHead className="border">Created</TableHead>
-                            <TableHead className="border">Finished</TableHead>
-                            <TableHead className="border text-center">
-                                Action
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-
-                    <TableBody>
-                        {isLoading || isFetching ? (
-                            Array.from({ length: 10 }).map((_, i) => (
-                                <TableRow key={i}>
-                                    {Array.from({ length: 10 }).map((__, j) => (
-                                        <TableCell key={j} className="border">
-                                            <Skeleton className="h-6 w-24" />
-                                        </TableCell>
+                                                    <SelectValue placeholder="Select user" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">
+                                                        All
+                                                    </SelectItem>
+                                                    {usersLoading ||
+                                                    usersFetching ? (
+                                                        <div className="space-y-2 p-2">
+                                                            {Array.from({
+                                                                length: 5,
+                                                            }).map((_, i) => (
+                                                                <div
+                                                                    key={i}
+                                                                    className="flex items-center gap-2 w-full"
+                                                                >
+                                                                    <Skeleton className="h-6 w-6 rounded-full" />
+                                                                    <div className="space-y-1">
+                                                                        <Skeleton className="h-3 w-32" />
+                                                                        <Skeleton className="h-2 w-20" />
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : usersData?.users
+                                                          ?.length > 0 ? (
+                                                        usersData?.users?.map(
+                                                            (u: IUser) => (
+                                                                <SelectItem
+                                                                    key={u._id}
+                                                                    value={
+                                                                        u._id
+                                                                    }
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Avatar className="h-6 w-6">
+                                                                            <AvatarImage
+                                                                                src={
+                                                                                    u.image ||
+                                                                                    ''
+                                                                                }
+                                                                                alt={
+                                                                                    u.firstName ||
+                                                                                    'User'
+                                                                                }
+                                                                            />
+                                                                            <AvatarFallback>
+                                                                                {u.firstName?.[0]?.toUpperCase() ||
+                                                                                    'U'}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-sm font-medium">
+                                                                                {
+                                                                                    u.firstName
+                                                                                }{' '}
+                                                                                {
+                                                                                    u.lastName
+                                                                                }
+                                                                            </span>
+                                                                            <span className="text-muted-foreground capitalize">
+                                                                                {u.role?.replace(
+                                                                                    /-/g,
+                                                                                    ' '
+                                                                                )}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </SelectItem>
+                                                            )
+                                                        )
+                                                    ) : (
+                                                        <SelectItem
+                                                            value="no-users"
+                                                            disabled
+                                                        >
+                                                            No users found
+                                                        </SelectItem>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </>
                                     ))}
-                                </TableRow>
-                            ))
-                        ) : tasks.length ? (
-                            tasks.map((task: ITask) => (
-                                <TableRow key={task._id}>
-                                    <TableCell className="border font-medium">
-                                        {task.title || 'Untitled'}
-                                    </TableCell>
-                                    <TableCell className="border capitalize">
-                                        {task.type.replace(/_/g, ' ')}
-                                    </TableCell>
-                                    <TableCell className="border">
-                                        {task.assignedTo?.firstName}{' '}
-                                        {task.assignedTo?.lastName}
-                                    </TableCell>
-                                    <TableCell className="border">
-                                        {task.createdBy?.firstName}{' '}
-                                        {task.createdBy?.lastName}
-                                    </TableCell>
-                                    <TableCell className="border text-center">
-                                        {task.leads?.length ?? 0}
-                                    </TableCell>
-                                    <TableCell className="border">
-                                        <Badge
-                                            variant={
-                                                task.status === 'completed'
-                                                    ? 'secondary'
-                                                    : task.status ===
-                                                      'in_progress'
-                                                    ? 'default'
-                                                    : task.status ===
-                                                      'cancelled'
-                                                    ? 'destructive'
-                                                    : 'outline'
-                                            }
-                                            className={cn(
-                                                'capitalize',
-                                                task.status === 'completed'
-                                                    ? 'bg-green-100 text-green-700 border border-green-300'
-                                                    : ''
-                                            )}
-                                        >
-                                            {task.status.replace('_', ' ')}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="border text-center">
-                                        {task.progress ?? 0}%
-                                    </TableCell>
-                                    <TableCell className="border text-sm text-muted-foreground">
-                                        {task.createdAt
-                                            ? formatDistanceToNow(
-                                                  new Date(task.createdAt),
-                                                  {
-                                                      addSuffix: true,
-                                                  }
-                                              )
-                                            : '—'}
-                                    </TableCell>
-                                    <TableCell className="border text-sm text-muted-foreground">
-                                        {task.finishedAt
-                                            ? formatDistanceToNow(
-                                                  new Date(task.finishedAt),
-                                                  {
-                                                      addSuffix: true,
-                                                  }
-                                              )
-                                            : '—'}
-                                    </TableCell>
-                                    <TableCell className="border text-center">
-                                        <Link
-                                            href={`/tasks/details/${task._id}`}
-                                            className="underline text-sm"
-                                        >
-                                            View
-                                        </Link>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={10}
-                                    className="text-center py-12 text-gray-500 border"
+
+                                <Link
+                                    href={'/tasks/create-task'}
+                                    target="_blank"
+                                    rel="noreferrer"
                                 >
-                                    No tasks found
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                                    <Button variant={'outline'}>
+                                        <IconPlus />
+                                        Create Task
+                                    </Button>
+                                </Link>
+
+                                <Select
+                                    value={String(limit)}
+                                    onValueChange={(val) => {
+                                        setPage(1);
+                                        setLimit(Number(val));
+                                    }}
+                                >
+                                    <SelectTrigger className="w-[120px] border-gray-300">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {[20, 50, 100].map((n) => (
+                                            <SelectItem
+                                                key={n}
+                                                value={String(n)}
+                                            >
+                                                {n} / page
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* ✅ Table */}
+                        <div className="mt-6 overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-accent">
+                                    <TableRow>
+                                        <TableHead className="border">
+                                            Title
+                                        </TableHead>
+                                        <TableHead className="border">
+                                            Type
+                                        </TableHead>
+                                        <TableHead className="border">
+                                            Assigned To
+                                        </TableHead>
+                                        <TableHead className="border">
+                                            Created By
+                                        </TableHead>
+                                        <TableHead className="border">
+                                            Leads
+                                        </TableHead>
+                                        <TableHead className="border">
+                                            Status
+                                        </TableHead>
+                                        <TableHead className="border text-center">
+                                            Progress
+                                        </TableHead>
+                                        <TableHead className="border">
+                                            Created
+                                        </TableHead>
+                                        <TableHead className="border">
+                                            Finished
+                                        </TableHead>
+                                        <TableHead className="border text-center">
+                                            Action
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+
+                                <TableBody>
+                                    {isLoading || isFetching ? (
+                                        Array.from({ length: 10 }).map(
+                                            (_, i) => (
+                                                <TableRow key={i}>
+                                                    {Array.from({
+                                                        length: 10,
+                                                    }).map((__, j) => (
+                                                        <TableCell
+                                                            key={j}
+                                                            className="border"
+                                                        >
+                                                            <Skeleton className="h-6 w-24" />
+                                                        </TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            )
+                                        )
+                                    ) : tasks.length ? (
+                                        tasks.map((task: ITask) => (
+                                            <TableRow key={task._id}>
+                                                <TableCell className="border font-medium">
+                                                    {task.title || 'Untitled'}
+                                                </TableCell>
+                                                <TableCell className="border capitalize">
+                                                    {task.type.replace(
+                                                        /_/g,
+                                                        ' '
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="border">
+                                                    {task.assignedTo?.firstName}{' '}
+                                                    {task.assignedTo?.lastName}
+                                                </TableCell>
+                                                <TableCell className="border">
+                                                    {task.createdBy?.firstName}{' '}
+                                                    {task.createdBy?.lastName}
+                                                </TableCell>
+                                                <TableCell className="border text-center">
+                                                    {task.leads?.length ?? 0}
+                                                </TableCell>
+                                                <TableCell className="border">
+                                                    <Badge
+                                                        variant={
+                                                            task.status ===
+                                                            'completed'
+                                                                ? 'secondary'
+                                                                : task.status ===
+                                                                  'in_progress'
+                                                                ? 'default'
+                                                                : task.status ===
+                                                                  'cancelled'
+                                                                ? 'destructive'
+                                                                : 'outline'
+                                                        }
+                                                        className={cn(
+                                                            'capitalize',
+                                                            task.status ===
+                                                                'completed'
+                                                                ? 'bg-green-100 text-green-700 border border-green-300'
+                                                                : ''
+                                                        )}
+                                                    >
+                                                        {task.status.replace(
+                                                            '_',
+                                                            ' '
+                                                        )}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="border text-center">
+                                                    {task.progress ?? 0}%
+                                                </TableCell>
+                                                <TableCell className="border text-sm text-muted-foreground">
+                                                    {task.createdAt
+                                                        ? formatDistanceToNow(
+                                                              new Date(
+                                                                  task.createdAt
+                                                              ),
+                                                              {
+                                                                  addSuffix:
+                                                                      true,
+                                                              }
+                                                          )
+                                                        : '—'}
+                                                </TableCell>
+                                                <TableCell className="border text-sm text-muted-foreground">
+                                                    {task.finishedAt
+                                                        ? formatDistanceToNow(
+                                                              new Date(
+                                                                  task.finishedAt
+                                                              ),
+                                                              {
+                                                                  addSuffix:
+                                                                      true,
+                                                              }
+                                                          )
+                                                        : '—'}
+                                                </TableCell>
+                                                <TableCell className="border text-center">
+                                                    <Link
+                                                        href={`/tasks/details/${task._id}`}
+                                                        className="underline text-sm"
+                                                    >
+                                                        View
+                                                    </Link>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={10}
+                                                className="text-center py-12 text-gray-500 border"
+                                            >
+                                                No tasks found
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </CardContent>
 
             <CardFooter className="flex justify-between items-center pt-4">

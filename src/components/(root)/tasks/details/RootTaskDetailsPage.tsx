@@ -39,28 +39,21 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, NotebookIcon as IconNotebook } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import LeadsTable from './LeadsTable';
 
-export const OUTCOME_LABELS: Record<IActivity['outcomeCode'], string> = {
-    interestedInfo: 'Interested - Wants More Info',
-    interestedQuotation: 'Interested - Wants Quotation',
-    noAnswer: 'No Answer / Missed',
-    notInterestedNow: 'Not Interested (Future Potential)',
-    invalidNumber: 'Invalid / Wrong Number',
-    existingClientFollowUp: 'Existing Client Follow-Up',
-    systemUpdate: 'System Update',
-};
-
-const CONTACT_CHANNELS: readonly {
-    value: NonNullable<IActivity['contactedChannel']>;
-    label: string;
-}[] = [
-    { value: 'phone', label: 'Phone' },
-    { value: 'sms', label: 'SMS' },
-    { value: 'whatsapp', label: 'WhatsApp' },
-    { value: 'email', label: 'Email' },
+// Lead status options
+const LEAD_STATUS = [
+    'new',
+    'busy',
+    'answering-machine',
+    'interested',
+    'not-interested',
+    'call-back',
+    'test-trial',
+    'on-board',
+    'invalid-number',
 ];
 
 export default function RootTaskDetailsPage() {
@@ -69,14 +62,14 @@ export default function RootTaskDetailsPage() {
 
     const [selectedLead, setSelectedLead] = useState<ILead | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [statusUpdateData, setStatusUpdateData] = useState<
-        Partial<IActivity>
-    >({
-        outcomeCode: undefined,
-        attemptNumber: 1,
-        dueAt: new Date(),
-    });
     const [open, setOpen] = useState(false);
+
+    const [activityData, setActivityData] = useState<Partial<IActivity>>({
+        status: 'interested',
+        notes: '',
+        nextAction: undefined,
+        dueAt: undefined,
+    });
 
     const { data, isLoading, isFetching } = useGetTaskByIdQuery(id, {
         skip: !id,
@@ -87,68 +80,39 @@ export default function RootTaskDetailsPage() {
     const task: ITask | null = data?.task ?? null;
     const leads: ILead[] = data?.leads ?? [];
 
-    const getStatusFromOutcome = (
-        outcomeCode: IActivity['outcomeCode']
-    ): ILead['status'] => {
-        const map: Record<IActivity['outcomeCode'], ILead['status']> = {
-            interestedInfo: 'responded',
-            interestedQuotation: 'qualified',
-            noAnswer: 'contacted',
-            notInterestedNow: 'onHold',
-            invalidNumber: 'onHold',
-            existingClientFollowUp: 'contacted',
-            systemUpdate: 'new',
-        };
-
-        return map[outcomeCode] || 'contacted';
-    };
-
-    const handleStatusSelect = (lead: ILead) => {
+    const handleOpenDialog = (lead: ILead) => {
         setSelectedLead(lead);
-        setStatusUpdateData({
-            outcomeCode: undefined,
-            attemptNumber: (lead.activities?.length ?? 0) + 1,
-        });
         setIsDialogOpen(true);
     };
 
     const handleStatusUpdate = async () => {
-        if (!selectedLead || !task || !statusUpdateData.outcomeCode) return;
+        if (!selectedLead || !task || !activityData.status) {
+            toast.error('Please select a status before saving.');
+            return;
+        }
 
         try {
-            const newStatus = getStatusFromOutcome(
-                statusUpdateData.outcomeCode
-            );
-
-            // Don't calculate progress on frontend - let backend handle it
             await updateTaskWithLead({
                 taskId: task._id,
                 leadId: selectedLead._id,
                 body: {
-                    // Remove taskUpdates from frontend calculation
-                    // Let backend handle the progress calculation
-                    leadUpdates: { status: newStatus },
+                    leadUpdates: { status: activityData.status },
                     activity: {
-                        type: 'call',
-                        outcomeCode: statusUpdateData.outcomeCode,
-                        contactedChannel: statusUpdateData.contactedChannel,
-                        notes: statusUpdateData.notes,
+                        status: activityData.status,
+                        notes: activityData.notes,
+                        nextAction: activityData.nextAction,
+                        dueAt: activityData.dueAt,
                         byUser: user?._id as string,
                         at: new Date(),
-                        attemptNumber: statusUpdateData.attemptNumber ?? 1,
-                        statusFrom: selectedLead.status,
-                        statusTo: newStatus,
                     },
                 },
             }).unwrap();
 
-            toast.success('Lead and task updated successfully!');
+            toast.success('Lead and activity updated successfully!');
             setIsDialogOpen(false);
         } catch (error) {
             console.error(error);
-            const errorMessage =
-                (error as Error).message || 'Failed to update lead and task.';
-            toast.error(errorMessage);
+            toast.error('Failed to update lead and task.');
         }
     };
 
@@ -197,7 +161,6 @@ export default function RootTaskDetailsPage() {
                                 />
                                 <AvatarFallback>
                                     {task.assignedTo?.firstName?.[0]}
-                                    {task.assignedTo?.lastName?.[0]}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
@@ -218,7 +181,6 @@ export default function RootTaskDetailsPage() {
                                 />
                                 <AvatarFallback>
                                     {task.createdBy?.firstName?.[0]}
-                                    {task.createdBy?.lastName?.[0]}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
@@ -248,6 +210,7 @@ export default function RootTaskDetailsPage() {
                 </CardContent>
             </Card>
 
+            {/* 🧩 Leads */}
             <Card>
                 <CardHeader>
                     <CardTitle>Leads ({leads.length})</CardTitle>
@@ -255,17 +218,18 @@ export default function RootTaskDetailsPage() {
                 <CardContent>
                     <LeadsTable
                         leads={leads}
-                        handleStatusSelect={handleStatusSelect}
+                        handleStatusSelect={handleOpenDialog}
                     />
                 </CardContent>
             </Card>
 
+            {/* 🗒️ Activity Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Update Lead Status</DialogTitle>
                         <DialogDescription>
-                            Provide details for{' '}
+                            Provide update for{' '}
                             <strong>{selectedLead?.company.name}</strong>
                         </DialogDescription>
                     </DialogHeader>
@@ -277,60 +241,25 @@ export default function RootTaskDetailsPage() {
                             handleStatusUpdate();
                         }}
                     >
-                        {/* 🟢 Outcome */}
+                        {/* 🟢 Status */}
                         <div className="space-y-3">
-                            <Label>Outcome *</Label>
+                            <Label>Status *</Label>
                             <Select
-                                value={statusUpdateData.outcomeCode || ''}
+                                value={activityData.status || ''}
                                 onValueChange={(v) =>
-                                    setStatusUpdateData((p) => ({
+                                    setActivityData((p) => ({
                                         ...p,
-                                        outcomeCode:
-                                            v as IActivity['outcomeCode'],
+                                        status: v as IActivity['status'],
                                     }))
                                 }
                             >
                                 <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select outcome" />
+                                    <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {Object.entries(OUTCOME_LABELS).map(
-                                        ([value, label]) => (
-                                            <SelectItem
-                                                key={value}
-                                                value={value}
-                                            >
-                                                {label}
-                                            </SelectItem>
-                                        )
-                                    )}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* 🟠 Contact Channel */}
-                        <div className="space-y-3">
-                            <Label>Contact Channel</Label>
-                            <Select
-                                value={statusUpdateData.contactedChannel || ''}
-                                onValueChange={(v) =>
-                                    setStatusUpdateData((p) => ({
-                                        ...p,
-                                        contactedChannel:
-                                            v as IActivity['contactedChannel'],
-                                    }))
-                                }
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select channel" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CONTACT_CHANNELS.map((c) => (
-                                        <SelectItem
-                                            key={c.value}
-                                            value={c.value}
-                                        >
-                                            {c.label}
+                                    {LEAD_STATUS.map((s) => (
+                                        <SelectItem key={s} value={s}>
+                                            {s.replace(/-/g, ' ')}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -341,9 +270,9 @@ export default function RootTaskDetailsPage() {
                         <div className="space-y-3">
                             <Label>Next Action</Label>
                             <Select
-                                value={statusUpdateData.nextAction || ''}
+                                value={activityData.nextAction || ''}
                                 onValueChange={(v) =>
-                                    setStatusUpdateData((p) => ({
+                                    setActivityData((p) => ({
                                         ...p,
                                         nextAction:
                                             v as IActivity['nextAction'],
@@ -354,56 +283,44 @@ export default function RootTaskDetailsPage() {
                                     <SelectValue placeholder="Select next action" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="sendProposal">
-                                        Send Proposal
-                                    </SelectItem>
-                                    <SelectItem value="followUp">
+                                    <SelectItem value="follow-up">
                                         Follow Up
                                     </SelectItem>
-                                    <SelectItem value="retry">Retry</SelectItem>
-                                    <SelectItem value="enrichContact">
-                                        Enrich Contact
+                                    <SelectItem value="send-proposal">
+                                        Send Proposal
                                     </SelectItem>
-                                    <SelectItem value="scheduleMeeting">
-                                        Schedule Meeting
+                                    <SelectItem value="call-back">
+                                        Call Back
                                     </SelectItem>
-                                    <SelectItem value="closeLost">
-                                        Close as Lost
-                                    </SelectItem>
+                                    <SelectItem value="close">Close</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
+                        {/* 📅 Due Date */}
                         <div className="flex flex-col gap-3">
-                            <Label htmlFor="dueAt" className="px-1">
-                                Follow-up Date
-                            </Label>
+                            <Label>Due Date</Label>
                             <Popover open={open} onOpenChange={setOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        id="dueAt"
-                                        className="w-auto justify-between font-normal"
+                                        className="justify-between"
                                     >
-                                        {statusUpdateData.dueAt
-                                            ? format(
-                                                  statusUpdateData.dueAt,
-                                                  'PPP'
-                                              )
+                                        {activityData.dueAt
+                                            ? format(activityData.dueAt, 'PPP')
                                             : 'Select date'}
                                         <ChevronDownIcon />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent
-                                    className="w-auto overflow-hidden p-0"
+                                    className="w-auto p-0"
                                     align="start"
                                 >
                                     <Calendar
                                         mode="single"
-                                        selected={statusUpdateData.dueAt}
-                                        captionLayout="dropdown"
+                                        selected={activityData.dueAt}
                                         onSelect={(date) => {
-                                            setStatusUpdateData((p) => ({
+                                            setActivityData((p) => ({
                                                 ...p,
                                                 dueAt: date,
                                             }));
@@ -414,87 +331,15 @@ export default function RootTaskDetailsPage() {
                             </Popover>
                         </div>
 
-                        {/* 💬 Duration */}
-                        <div className="space-y-3">
-                            <Label>Call Duration (seconds)</Label>
-                            <input
-                                type="text"
-                                className="w-full border rounded-md px-3 py-2 text-sm"
-                                placeholder="e.g., 180"
-                                value={statusUpdateData.durationSec || ''}
-                                onChange={(e) =>
-                                    setStatusUpdateData((p) => ({
-                                        ...p,
-                                        durationSec: Number(e.target.value),
-                                    }))
-                                }
-                            />
-                        </div>
-
-                        {/* 🔢 Attempt Number */}
-                        <div className="space-y-3">
-                            <Label>Attempt #</Label>
-                            <input
-                                type="text"
-                                className="w-full border rounded-md px-3 py-2 text-sm"
-                                value={statusUpdateData.attemptNumber || 1}
-                                onChange={(e) =>
-                                    setStatusUpdateData((p) => ({
-                                        ...p,
-                                        attemptNumber: Number(e.target.value),
-                                    }))
-                                }
-                            />
-                        </div>
-
-                        {/* 🚫 Lost Reason (only when outcome = notInterestedNow) */}
-                        {statusUpdateData.outcomeCode ===
-                            'notInterestedNow' && (
-                            <div className="col-span-2 space-y-3">
-                                <Label>Lost Reason</Label>
-                                <Select
-                                    value={statusUpdateData.lostReason || ''}
-                                    onValueChange={(v) =>
-                                        setStatusUpdateData((p) => ({
-                                            ...p,
-                                            lostReason:
-                                                v as IActivity['lostReason'],
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select reason" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="noBudget">
-                                            No Budget
-                                        </SelectItem>
-                                        <SelectItem value="notInterested">
-                                            Not Interested
-                                        </SelectItem>
-                                        <SelectItem value="timing">
-                                            Bad Timing
-                                        </SelectItem>
-                                        <SelectItem value="competitor">
-                                            Chose Competitor
-                                        </SelectItem>
-                                        <SelectItem value="other">
-                                            Other
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
                         {/* 📝 Notes */}
                         <div className="col-span-2 space-y-3">
                             <Label>Notes</Label>
                             <Textarea
                                 rows={3}
                                 placeholder="Add notes about this interaction..."
-                                value={statusUpdateData.notes || ''}
+                                value={activityData.notes || ''}
                                 onChange={(e) =>
-                                    setStatusUpdateData((p) => ({
+                                    setActivityData((p) => ({
                                         ...p,
                                         notes: e.target.value,
                                     }))
