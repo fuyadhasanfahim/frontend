@@ -53,6 +53,9 @@ const LEAD_STATUS = [
     'call-back',
     'test-trial',
     'on-board',
+    'no-answer',
+    'email/whatsApp-sent',
+    'language-barrier',
     'invalid-number',
 ];
 

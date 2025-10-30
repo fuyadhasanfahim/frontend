@@ -12,6 +12,11 @@ import {
 import { ILead } from '@/types/lead.interface';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export default function LeadsTable({
     leads,
@@ -110,7 +115,16 @@ export default function LeadsTable({
 
                             {/* Address */}
                             <TableCell className="border max-w-[200px] truncate capitalize">
-                                {lead.address || 'N/A'}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="block max-w-[200px] truncate cursor-help">
+                                            {lead.address || 'N/A'}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-sm break-words">
+                                        {lead.address || 'N/A'}
+                                    </TooltipContent>
+                                </Tooltip>
                             </TableCell>
 
                             {/* Country */}
@@ -122,11 +136,22 @@ export default function LeadsTable({
                             <TableCell className="border capitalize">
                                 {lead.status.replace('_', ' ')}
                             </TableCell>
-                            <TableCell className="border capitalize truncate max-w-[200px]">
-                                {(lead.activities &&
-                                    lead.activities[0]?.notes) ||
-                                    'N/A'}
+
+                            {/* notes */}
+                            <TableCell className="border max-w-[200px] truncate">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="block max-w-[200px] truncate cursor-help">
+                                            {lead.activities?.[0]?.notes ||
+                                                'N/A'}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-sm break-words">
+                                        {lead.activities?.[0]?.notes || 'N/A'}
+                                    </TooltipContent>
+                                </Tooltip>
                             </TableCell>
+
                             <TableCell className="border text-center">
                                 <Button
                                     variant="link"

@@ -72,6 +72,9 @@ const statusData = [
     'test-trial',
     'call-back',
     'on-board',
+    'no-answer',
+    'email/whatsApp-sent',
+    'language-barrier',
     'invalid-number',
 ];
 
@@ -473,19 +476,19 @@ export default function LeadsTable() {
                                                     </TableCell>
 
                                                     {/* Address */}
-                                                    <TableCell className="border">
+                                                    <TableCell className="border max-w-[200px] truncate capitalize">
                                                         <Tooltip>
                                                             <TooltipTrigger
                                                                 asChild
                                                             >
-                                                                <span className="max-w-[200px] truncate capitalize">
-                                                                    {
-                                                                        lead.address
-                                                                    }
+                                                                <span className="block max-w-[200px] truncate cursor-help">
+                                                                    {lead.address ||
+                                                                        'N/A'}
                                                                 </span>
                                                             </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                {lead.address}
+                                                            <TooltipContent className="max-w-sm break-words">
+                                                                {lead.address ||
+                                                                    'N/A'}
                                                             </TooltipContent>
                                                         </Tooltip>
                                                     </TableCell>
@@ -502,33 +505,29 @@ export default function LeadsTable() {
                                                             ' '
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="border">
+
+                                                    {/* notes */}
+                                                    <TableCell className="border max-w-[200px] truncate">
                                                         <Tooltip>
                                                             <TooltipTrigger
                                                                 asChild
                                                             >
-                                                                <span className="max-w-[200px] truncate">
-                                                                    {(lead.activities &&
-                                                                        lead
-                                                                            .activities[0]
-                                                                            ?.notes) ||
+                                                                <span className="block max-w-[200px] truncate cursor-help">
+                                                                    {lead
+                                                                        .activities?.[0]
+                                                                        ?.notes ||
                                                                         'N/A'}
                                                                 </span>
                                                             </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                {(lead.activities &&
-                                                                    lead
-                                                                        .activities[0]
-                                                                        ?.notes) ||
+                                                            <TooltipContent className="max-w-sm break-words">
+                                                                {lead
+                                                                    .activities?.[0]
+                                                                    ?.notes ||
                                                                     'N/A'}
                                                             </TooltipContent>
                                                         </Tooltip>
-
-                                                        {(lead.activities &&
-                                                            lead.activities[0]
-                                                                ?.notes) ||
-                                                            'N/A'}
                                                     </TableCell>
+
                                                     {/* Actions */}
                                                     <TableCell className="border text-center">
                                                         <DropdownMenu>
