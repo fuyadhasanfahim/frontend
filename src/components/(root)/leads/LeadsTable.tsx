@@ -46,6 +46,11 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type SortOption =
     | 'companyAsc'
@@ -468,8 +473,21 @@ export default function LeadsTable() {
                                                     </TableCell>
 
                                                     {/* Address */}
-                                                    <TableCell className="border max-w-[200px] truncate capitalize">
-                                                        {lead.address || 'N/A'}
+                                                    <TableCell className="border">
+                                                        <Tooltip>
+                                                            <TooltipTrigger
+                                                                asChild
+                                                            >
+                                                                <span className="max-w-[200px] truncate capitalize">
+                                                                    {
+                                                                        lead.address
+                                                                    }
+                                                                </span>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                {lead.address}
+                                                            </TooltipContent>
+                                                        </Tooltip>
                                                     </TableCell>
 
                                                     {/* Country */}
@@ -484,7 +502,28 @@ export default function LeadsTable() {
                                                             ' '
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="border max-w-[200px] truncate">
+                                                    <TableCell className="border">
+                                                        <Tooltip>
+                                                            <TooltipTrigger
+                                                                asChild
+                                                            >
+                                                                <span className="max-w-[200px] truncate">
+                                                                    {(lead.activities &&
+                                                                        lead
+                                                                            .activities[0]
+                                                                            ?.notes) ||
+                                                                        'N/A'}
+                                                                </span>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                {(lead.activities &&
+                                                                    lead
+                                                                        .activities[0]
+                                                                        ?.notes) ||
+                                                                    'N/A'}
+                                                            </TooltipContent>
+                                                        </Tooltip>
+
                                                         {(lead.activities &&
                                                             lead.activities[0]
                                                                 ?.notes) ||

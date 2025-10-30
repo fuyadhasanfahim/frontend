@@ -21,6 +21,9 @@ export type LeadStatus =
     | 'test-trial'
     | 'call-back'
     | 'on-board'
+    | 'no-answer'
+    | 'email/whatsApp-sent'
+    | 'language-barrier'
     | 'invalid-number';
 
 export interface IActivity {
